@@ -1,0 +1,9 @@
+node_modules/
+session/
+whatsapp_final.xlsx
+daily_review.xlsx
+send_log.txt
+history.json
+*.abbu
+.DS_Store
+~$*
