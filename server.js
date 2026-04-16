@@ -15,21 +15,26 @@ const wss    = new WebSocket.Server({ server });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── PATHS — relative to script, works on any machine ─────────────────────────
+// ── PATHS ─────────────────────────────────────────────────────────────────────
 const BASE    = __dirname;
 const REVIEW  = path.join(BASE, 'daily_review.xlsx');
-const MASTER  = path.join(BASE, 'whatsapp_final.xlsx');
+const MASTER  = path.join(BASE, 'whatsapp_final.json');
 const VIDEO   = path.join(BASE, 'media', 'anugnya_video.mp4');
 const SESSION = path.join(BASE, 'session');
 const LOG     = path.join(BASE, 'send_log.txt');
 const HISTORY = path.join(BASE, 'history.json');
 const CONFIG  = path.join(BASE, 'config.json');
 
-// ── CONFIG — editable message template ───────────────────────────────────────
+// ── CONFIG — all settings editable from UI ────────────────────────────────────
 const DEFAULT_CONFIG = {
   senderName:      'Rajiv',
   messageTemplate: 'Namaste {name}, our focus going forward is using energy healing to help cancer patients manage treatment side effects — physically, emotionally and mentally — so treatment stays on track. Keep this for someone who might need it.',
-  websiteUrl:      'www.anugnyaholisticcare.com'
+  websiteUrl:      'www.anugnyaholisticcare.com',
+  dailyLimit:      50,
+  batchSize:       10,
+  batchIntervalMin: 120,
+  delayMinSec:     15,
+  delayMaxSec:     40
 };
 
 function loadConfig() {
@@ -40,7 +45,7 @@ function loadConfig() {
 }
 function saveConfig(cfg) { fs.writeFileSync(CONFIG, JSON.stringify(cfg, null, 2)); }
 
-// ── STATE ────────────────────────────────────────────────────────────────────
+// ── STATE ─────────────────────────────────────────────────────────────────────
 let state = {
   status: 'idle', qrDataUrl: null, currentBatch: 0, totalBatches: 0,
   sentToday: 0, failedToday: 0, totalContacts: 0, startTime: null,
@@ -49,7 +54,7 @@ let state = {
 let reviewContacts = [];
 let waClient = null;
 
-// ── LOGGING ──────────────────────────────────────────────────────────────────
+// ── LOGGING ───────────────────────────────────────────────────────────────────
 function log(msg, type = 'info') {
   const ts = new Date().toLocaleString('en-IN');
   const line = `[${ts}] ${msg}`;
@@ -63,9 +68,11 @@ function broadcast(data) {
 }
 function broadcastState() { broadcast({ type: 'state', data: { ...state, qrDataUrl: undefined } }); }
 
-// ── HELPERS ──────────────────────────────────────────────────────────────────
+// ── HELPERS ───────────────────────────────────────────────────────────────────
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-function randDelay(min = 15000, max = 40000) { return Math.floor(Math.random() * (max - min)) + min; }
+function randDelay(minSec, maxSec) {
+  return (Math.floor(Math.random() * (maxSec - minSec)) + minSec) * 1000;
+}
 
 function loadReviewFromFile() {
   if (!fs.existsSync(REVIEW)) { reviewContacts = []; return; }
@@ -75,8 +82,7 @@ function loadReviewFromFile() {
     const rows = XLSX.utils.sheet_to_json(ws, { defval: '', range: 1, raw: false });
     const sentPhones = new Set();
     if (fs.existsSync(MASTER)) {
-      const mrows = XLSX.utils.sheet_to_json(XLSX.readFile(MASTER).Sheets[XLSX.readFile(MASTER).SheetNames[0]], { defval: '', raw: false });
-      mrows.forEach(r => {
+      JSON.parse(fs.readFileSync(MASTER)).forEach(r => {
         const st = String(r.status || '').trim();
         if (st === 'sent' || st === 'skip') sentPhones.add(String(r['Phone Number'] || '').trim().slice(-10));
       });
@@ -90,38 +96,34 @@ function loadReviewFromFile() {
 
 function readMaster() {
   if (!fs.existsSync(MASTER)) return [];
-  const wb = XLSX.readFile(MASTER);
-  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: false });
+  return JSON.parse(fs.readFileSync(MASTER));
 }
+function saveMaster(rows) { fs.writeFileSync(MASTER, JSON.stringify(rows)); }
 
 function updateMasterSent(sentPhones) {
-  const wb    = XLSX.readFile(MASTER);
-  const ws    = wb.Sheets[wb.SheetNames[0]];
-  const rows  = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+  const rows  = readMaster();
   const today = new Date().toLocaleDateString('en-IN');
-  const updated = rows.map(r => {
+  saveMaster(rows.map(r => {
     const p = String(r['Phone Number'] || '').trim().slice(-10);
     return sentPhones.has(p) ? { ...r, status: 'sent', sent_date: today } : r;
-  });
-  wb.Sheets[wb.SheetNames[0]] = XLSX.utils.json_to_sheet(updated);
-  XLSX.writeFile(wb, MASTER);
+  }));
 }
 
 function saveHistory(record) {
-  let history = [];
-  if (fs.existsSync(HISTORY)) { try { history = JSON.parse(fs.readFileSync(HISTORY)); } catch {} }
-  history.unshift(record);
-  if (history.length > 60) history = history.slice(0, 60);
-  fs.writeFileSync(HISTORY, JSON.stringify(history, null, 2));
+  let h = [];
+  if (fs.existsSync(HISTORY)) { try { h = JSON.parse(fs.readFileSync(HISTORY)); } catch {} }
+  h.unshift(record);
+  if (h.length > 60) h = h.slice(0, 60);
+  fs.writeFileSync(HISTORY, JSON.stringify(h, null, 2));
 }
 
 function buildMessage(contact) {
   const cfg  = loadConfig();
   const name = (contact.first_name || contact.Name || 'Friend').toString().trim();
-  return `${cfg.messageTemplate.replace('{name}', name)}\n\n${cfg.senderName}\n${cfg.websiteUrl}`;
+  return `${cfg.messageTemplate.replace(/{name}/g, name)}\n\n${cfg.senderName}\n${cfg.websiteUrl}`;
 }
 
-// ── WHATSAPP CLIENT ──────────────────────────────────────────────────────────
+// ── WHATSAPP CLIENT ───────────────────────────────────────────────────────────
 function initClient() {
   if (waClient) { try { waClient.destroy(); } catch {} }
   waClient = new Client({
@@ -140,7 +142,7 @@ function initClient() {
   state.status = 'connecting'; broadcastState();
 }
 
-// ── SEND ONE CONTACT ─────────────────────────────────────────────────────────
+// ── SEND ONE CONTACT ──────────────────────────────────────────────────────────
 async function sendToContact(contact, videoMedia) {
   const phone  = String(contact['Phone Number']).trim();
   const chatId = `${phone}@c.us`;
@@ -161,19 +163,23 @@ async function sendToContact(contact, videoMedia) {
   }
 }
 
-// ── SEND LOOP ────────────────────────────────────────────────────────────────
+// ── SEND LOOP — uses config for all timing and volume ─────────────────────────
 async function runSend() {
-  const contacts = reviewContacts;
-  if (!contacts.length) { log('❌ No contacts loaded. Run Pick 50 first.', 'error'); return; }
+  const cfg      = loadConfig();
+  const contacts = reviewContacts.slice(0, cfg.dailyLimit);
+  if (!contacts.length) { log('❌ No contacts loaded. Run Pick first.', 'error'); return; }
   if (!fs.existsSync(VIDEO)) { log('❌ Video not found: ' + VIDEO, 'error'); return; }
+
   const videoMedia = MessageMedia.fromFilePath(VIDEO);
-  const BATCH = 10; const batches = [];
-  for (let i = 0; i < contacts.length; i += BATCH) batches.push(contacts.slice(i, i + BATCH));
+  const batches = [];
+  for (let i = 0; i < contacts.length; i += cfg.batchSize) batches.push(contacts.slice(i, i + cfg.batchSize));
+
   state.status = 'sending'; state.currentBatch = 0; state.totalBatches = batches.length;
   state.sentToday = 0; state.failedToday = 0; state.totalContacts = contacts.length;
   state.startTime = new Date().toISOString(); state.pauseRequested = false; state.stopRequested = false;
   broadcastState();
-  log(`🚀 Starting send — ${contacts.length} contacts in ${batches.length} batches`);
+  log(`🚀 Starting send — ${contacts.length} contacts in ${batches.length} batches (${cfg.batchSize}/batch, ${cfg.batchIntervalMin}min intervals)`);
+
   const sentPhones = new Set();
   for (let b = 0; b < batches.length; b++) {
     if (state.stopRequested) { log('🛑 Stopped by user'); break; }
@@ -185,14 +191,18 @@ async function runSend() {
       const phone = String(contact['Phone Number']).trim();
       if (await sendToContact(contact, videoMedia)) sentPhones.add(phone.slice(-10));
       broadcastState();
-      if (contact !== batches[b][batches[b].length - 1]) { const d = randDelay(); log(`  ⏳ ${Math.round(d/1000)}s`); await sleep(d); }
+      if (contact !== batches[b][batches[b].length - 1]) {
+        const d = randDelay(cfg.delayMinSec, cfg.delayMaxSec);
+        log(`  ⏳ ${Math.round(d/1000)}s`); await sleep(d);
+      }
     }
     updateMasterSent(sentPhones);
     if (b < batches.length - 1 && !state.stopRequested) {
-      const next = new Date(Date.now() + 2*60*60*1000);
+      const intervalMs = cfg.batchIntervalMin * 60 * 1000;
+      const next = new Date(Date.now() + intervalMs);
       state.nextBatchAt = next.toISOString();
       log(`⏰ Next batch at ${next.toLocaleTimeString('en-IN')}`); broadcastState();
-      await sleep(2*60*60*1000);
+      await sleep(intervalMs);
     }
   }
   saveHistory({ date: new Date().toLocaleDateString('en-IN'), sent: state.sentToday, failed: state.failedToday, total: state.totalContacts });
@@ -200,14 +210,22 @@ async function runSend() {
   log(`\n🎉 Done — Sent: ${state.sentToday} | Failed: ${state.failedToday}`);
 }
 
-// ── API ROUTES ───────────────────────────────────────────────────────────────
+// ── API ROUTES ────────────────────────────────────────────────────────────────
 app.get('/api/status', (req, res) => res.json(state));
 app.get('/api/qr',     (req, res) => res.json({ qrDataUrl: state.qrDataUrl }));
 app.post('/api/connect', (req, res) => { initClient(); res.json({ ok: true }); });
 
 // Config
 app.get('/api/config',  (req, res) => res.json(loadConfig()));
-app.post('/api/config', (req, res) => { saveConfig({ ...loadConfig(), ...req.body }); res.json({ ok: true }); });
+app.post('/api/config', (req, res) => {
+  const cfg = { ...loadConfig(), ...req.body };
+  // Ensure numbers are stored as numbers
+  ['dailyLimit','batchSize','batchIntervalMin','delayMinSec','delayMaxSec'].forEach(k => {
+    if (cfg[k] !== undefined) cfg[k] = parseInt(cfg[k]);
+  });
+  saveConfig(cfg);
+  res.json({ ok: true, config: cfg });
+});
 
 // Contacts
 app.get('/api/contacts', (req, res) => res.json(reviewContacts));
@@ -221,10 +239,8 @@ app.delete('/api/contacts/:phone', (req, res) => {
   const phone = req.params.phone;
   reviewContacts = reviewContacts.filter(r => String(r['Phone Number']).trim() !== phone);
   try {
-    const wb = XLSX.readFile(MASTER); const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
-    const updated = rows.map(r => { const p = String(r['Phone Number']||'').trim(); return (p===phone||p.slice(-10)===phone.slice(-10)) ? {...r,status:'skip'} : r; });
-    wb.Sheets[wb.SheetNames[0]] = XLSX.utils.json_to_sheet(updated); XLSX.writeFile(wb, MASTER);
+    const rows = readMaster();
+    saveMaster(rows.map(r => { const p = String(r['Phone Number']||'').trim(); return (p===phone||p.slice(-10)===phone.slice(-10)) ? {...r,status:'skip'} : r; }));
   } catch (e) { log('⚠️ Could not update master for skip: ' + e.message, 'warn'); }
   res.json({ ok: true, remaining: reviewContacts.length });
 });
@@ -244,8 +260,7 @@ app.post('/api/replenish', (req, res) => {
     const wb = XLSX.readFile(REVIEW); const ws = wb.Sheets[wb.SheetNames[0]];
     const allRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
     const banner = allRows[0]||[]; const headers = allRows[1]||[];
-    const dataRows = reviewContacts.map(r => headers.map(h => r[h]!==undefined ? String(r[h]) : ''));
-    wb.Sheets[wb.SheetNames[0]] = XLSX.utils.aoa_to_sheet([banner, headers, ...dataRows]);
+    wb.Sheets[wb.SheetNames[0]] = XLSX.utils.aoa_to_sheet([banner, headers, ...reviewContacts.map(r => headers.map(h => r[h]!==undefined ? String(r[h]) : ''))]);
     XLSX.writeFile(wb, REVIEW);
   } catch (e) { log('⚠️ Could not sync review before replenish: ' + e.message, 'warn'); }
   execFile('python3', [path.join(BASE, 'replenish.py')], (err, stdout, stderr) => {
@@ -262,13 +277,13 @@ app.post('/api/send/start', (req, res) => {
   runSend(); res.json({ ok: true });
 });
 
-// Manual send — send to next N contacts immediately without batch scheduling
+// Manual send — N contacts immediately
 app.post('/api/send/manual', async (req, res) => {
   if (state.status !== 'ready') return res.json({ ok: false, msg: 'WhatsApp not connected' });
   if (!fs.existsSync(VIDEO))    return res.json({ ok: false, msg: 'Video not found' });
-  const count   = Math.min(parseInt(req.body.count) || 1, 10);
-  const pending = reviewContacts.filter(c => !c._sent);
-  const toSend  = pending.slice(0, count);
+  const cfg    = loadConfig();
+  const count  = Math.min(parseInt(req.body.count) || 1, 50);
+  const toSend = reviewContacts.filter(c => !c._sent).slice(0, count);
   if (!toSend.length) return res.json({ ok: false, msg: 'No contacts to send to' });
   res.json({ ok: true, sending: toSend.length });
   const videoMedia = MessageMedia.fromFilePath(VIDEO);
@@ -277,7 +292,7 @@ app.post('/api/send/manual', async (req, res) => {
   for (const contact of toSend) {
     const phone = String(contact['Phone Number']).trim();
     if (await sendToContact(contact, videoMedia)) { sentPhones.add(phone.slice(-10)); contact._sent = true; }
-    await sleep(randDelay(5000, 10000));
+    await sleep(randDelay(cfg.delayMinSec, cfg.delayMaxSec));
   }
   updateMasterSent(sentPhones);
   log(`✅ Manual send complete`);
@@ -312,15 +327,15 @@ app.get('/api/master/stats', (req, res) => {
   } catch { res.json({ total:0, pending:0, sent:0, failed:0, skip:0 }); }
 });
 
-// ── WEBSOCKET ────────────────────────────────────────────────────────────────
+// ── WEBSOCKET ─────────────────────────────────────────────────────────────────
 wss.on('connection', ws => {
   ws.send(JSON.stringify({ type: 'state', data: state }));
   if (state.qrDataUrl) ws.send(JSON.stringify({ type: 'qr', dataUrl: state.qrDataUrl }));
 });
 
-// ── START ────────────────────────────────────────────────────────────────────
+// ── START ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
   console.log(`\n✅ Anugnya WhatsApp Sender running`);
   console.log(`   Open: http://localhost:${PORT}\n`);
   loadReviewFromFile();

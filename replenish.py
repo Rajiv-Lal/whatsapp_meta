@@ -1,14 +1,15 @@
 import pandas as pd
 import subprocess
 import sys
+import json
 from datetime import date
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-MASTER     = "/Users/rajivlal/Desktop/whatsapp-sender/whatsapp_final.xlsx"
-REVIEW     = "/Users/rajivlal/Desktop/whatsapp-sender/daily_review.xlsx"
+MASTER     = "/home/rajiv/anugnya-whatsapp-sender/whatsapp_final.json"
+REVIEW     = "/home/rajiv/anugnya-whatsapp-sender/daily_review.xlsx"
 BATCH_SIZE = 50
 
 def fix_name(val):
@@ -62,8 +63,10 @@ if current_count >= BATCH_SIZE:
 needed = BATCH_SIZE - current_count
 print(f"Need {needed} more contacts to reach {BATCH_SIZE}")
 
-# Read master list
-master = pd.read_excel(MASTER, dtype=str)
+# Read master list from JSON
+with open(MASTER) as f:
+    master_records = json.load(f)
+master = pd.DataFrame(master_records)
 if 'status' not in master.columns:
     master['status'] = 'pending'
 master['status'] = master['status'].fillna('pending')

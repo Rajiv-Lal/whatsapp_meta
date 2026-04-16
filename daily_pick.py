@@ -1,14 +1,15 @@
 import pandas as pd
 import subprocess
 import sys
+import json
 from datetime import date
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-MASTER     = "/Users/rajivlal/Desktop/whatsapp-sender/whatsapp_final.xlsx"
-REVIEW     = "/Users/rajivlal/Desktop/whatsapp-sender/daily_review.xlsx"
+MASTER     = "/home/rajiv/anugnya-whatsapp-sender/whatsapp_final.json"
+REVIEW     = "/home/rajiv/anugnya-whatsapp-sender/daily_review.xlsx"
 BATCH_SIZE = 50
 
 def fix_name(val):
@@ -34,8 +35,10 @@ border = Border(left=thin, right=thin, top=thin, bottom=thin)
 HDR_MAIN   = "1F4E79"
 HDR_ACTION = "375623"
 
-# Read master list
-df = pd.read_excel(MASTER, dtype=str)
+# Read master list from JSON
+with open(MASTER) as f:
+    records = json.load(f)
+df = pd.DataFrame(records)
 
 # Ensure status column exists
 if 'status' not in df.columns:
