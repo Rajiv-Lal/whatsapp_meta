@@ -156,6 +156,11 @@ async function sendToContact(contact, videoMedia) {
     broadcast({ type: 'contact_sent', phone, name, status: 'sent' });
     return true;
   } catch (err) {
+    if (err.message && err.message.includes("No LID")) {
+      const rows = readMaster();
+      saveMaster(rows.map(r => { const p = String(r["Phone Number"]||"").trim(); return (p===phone||p.slice(-10)===phone.slice(-10)) ? {...r,status:"skip"} : r; }));
+      log(`  ⏭ ${name} (${phone}) — not on WhatsApp, skipped permanently`);
+    }
     state.failedToday++;
     log(`  ❌ ${name} (${phone}): ${err.message}`, 'error');
     broadcast({ type: 'contact_sent', phone, name, status: 'failed' });
