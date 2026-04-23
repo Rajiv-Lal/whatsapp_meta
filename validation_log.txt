@@ -1,0 +1,210 @@
+[21/4/2026, 11:01:54 am] 📋 5012 pending contacts to validate
+[21/4/2026, 11:01:54 am] ⏱  Estimated time: 292 minutes
+[21/4/2026, 11:05:55 am] 📋 5012 pending contacts to validate
+[21/4/2026, 11:05:55 am] ⏱  Estimated time: 292 minutes
+[21/4/2026, 11:06:26 am] 📋 5012 pending contacts to validate
+[21/4/2026, 11:06:26 am] ⏱  Estimated time: 292 minutes
+[21/4/2026, 11:07:20 am] 📋 5012 pending contacts to validate
+[21/4/2026, 11:07:20 am] ⏱  Estimated time: 292 minutes
+[21/4/2026, 11:13:08 am] 📋 Checking first 500 pending contacts
+[21/4/2026, 11:13:08 am] ⏱  Estimated time: 25 minutes
+[21/4/2026, 11:13:15 am] ✅ WhatsApp connected — starting validation
+[21/4/2026, 11:15:55 am] 💾 50/500 checked — ✅ 40 valid, ❌ 10 not on WhatsApp
+[21/4/2026, 11:18:38 am] 💾 100/500 checked — ✅ 79 valid, ❌ 21 not on WhatsApp
+[21/4/2026, 11:20:35 am] ⚠️ Anjaly (917036244444) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:20:38 am] ⚠️ Mark (910464335120) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:21 am] ⚠️ Gaurav (918180440400) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:23 am] ⚠️ ChandraShekhar (918852042520) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:26 am] ⚠️ Bhawna (919871607008) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:29 am] ⚠️ Pankaj (919250097350) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:33 am] ⚠️ Mangesh Mane (919920795123) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:35 am] ⚠️ Ajit Horra (919810620969) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:38 am] ⚠️ Abhishek (919321117448) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:41 am] ⚠️ Gajendra Mahanand (919711252794) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:45 am] ⚠️ Amit Gupta (919031056422) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:27:48 am] ⚠️ Shalini (919810621590) — Attempted to use detached Frame '9D28B77B273FCDC7E6F92BD31CA88B94'.
+[21/4/2026, 11:30:42 am] 📋 Checking first 500 pending contacts
+[21/4/2026, 11:30:42 am] ⏱  Estimated time: 25 minutes
+[21/4/2026, 11:30:49 am] ✅ WhatsApp connected — starting validation
+[21/4/2026, 11:33:40 am] 💾 50/500 checked — ✅ 50 valid, ❌ 0 not on WhatsApp
+[21/4/2026, 11:36:30 am] 💾 100/500 checked — ✅ 97 valid, ❌ 3 not on WhatsApp
+[21/4/2026, 11:39:19 am] 💾 150/500 checked — ✅ 132 valid, ❌ 18 not on WhatsApp
+[21/4/2026, 11:42:12 am] 💾 200/500 checked — ✅ 158 valid, ❌ 42 not on WhatsApp
+[21/4/2026, 11:44:59 am] 💾 250/500 checked — ✅ 192 valid, ❌ 58 not on WhatsApp
+[21/4/2026, 11:47:40 am] 💾 300/500 checked — ✅ 219 valid, ❌ 81 not on WhatsApp
+[21/4/2026, 11:50:29 am] 💾 350/500 checked — ✅ 255 valid, ❌ 95 not on WhatsApp
+[21/4/2026, 11:53:16 am] 💾 400/500 checked — ✅ 291 valid, ❌ 109 not on WhatsApp
+[21/4/2026, 11:56:04 am] 💾 450/500 checked — ✅ 318 valid, ❌ 132 not on WhatsApp
+[21/4/2026, 11:58:41 am] 💾 500/500 checked — ✅ 346 valid, ❌ 154 not on WhatsApp
+[21/4/2026, 11:58:45 am] 
+🎉 Batch complete
+[21/4/2026, 11:58:45 am]    ✅ On WhatsApp:     346 (69%)
+[21/4/2026, 11:58:45 am]    ❌ Not on WhatsApp: 154 (31%)
+[21/4/2026, 11:58:45 am]    ⚠️  Errors:          0
+[21/4/2026, 12:04:19 pm] 📋 Checking next 2000 pending contacts
+[21/4/2026, 12:04:19 pm] ⏱  Estimated time: 100 minutes
+[21/4/2026, 12:04:26 pm] ✅ WhatsApp connected — starting validation
+[21/4/2026, 12:07:09 pm] 💾 50/2000 — ✅ 50 valid, ❌ 0 not on WhatsApp
+[21/4/2026, 12:09:57 pm] 💾 100/2000 — ✅ 100 valid, ❌ 0 not on WhatsApp
+[21/4/2026, 12:12:42 pm] 💾 150/2000 — ✅ 150 valid, ❌ 0 not on WhatsApp
+[21/4/2026, 12:15:30 pm] 💾 200/2000 — ✅ 200 valid, ❌ 0 not on WhatsApp
+[21/4/2026, 12:18:14 pm] 💾 250/2000 — ✅ 250 valid, ❌ 0 not on WhatsApp
+[21/4/2026, 12:21:05 pm] 💾 300/2000 — ✅ 300 valid, ❌ 0 not on WhatsApp
+[21/4/2026, 12:23:54 pm] 💾 350/2000 — ✅ 349 valid, ❌ 1 not on WhatsApp
+[21/4/2026, 12:26:40 pm] 💾 400/2000 — ✅ 382 valid, ❌ 18 not on WhatsApp
+[21/4/2026, 12:29:28 pm] 💾 450/2000 — ✅ 409 valid, ❌ 41 not on WhatsApp
+[21/4/2026, 12:32:14 pm] 💾 500/2000 — ✅ 447 valid, ❌ 53 not on WhatsApp
+[21/4/2026, 12:34:58 pm] 💾 550/2000 — ✅ 481 valid, ❌ 69 not on WhatsApp
+[21/4/2026, 12:37:35 pm] 💾 600/2000 — ✅ 517 valid, ❌ 83 not on WhatsApp
+[21/4/2026, 12:40:16 pm] 💾 650/2000 — ✅ 553 valid, ❌ 97 not on WhatsApp
+[21/4/2026, 12:42:53 pm] 💾 700/2000 — ✅ 581 valid, ❌ 119 not on WhatsApp
+[21/4/2026, 12:45:41 pm] 💾 750/2000 — ✅ 612 valid, ❌ 138 not on WhatsApp
+[21/4/2026, 12:48:24 pm] 💾 800/2000 — ✅ 643 valid, ❌ 157 not on WhatsApp
+[21/4/2026, 12:51:06 pm] 💾 850/2000 — ✅ 671 valid, ❌ 179 not on WhatsApp
+[21/4/2026, 12:53:46 pm] 💾 900/2000 — ✅ 700 valid, ❌ 200 not on WhatsApp
+[21/4/2026, 12:56:21 pm] 💾 950/2000 — ✅ 728 valid, ❌ 222 not on WhatsApp
+[21/4/2026, 12:59:06 pm] 💾 1000/2000 — ✅ 759 valid, ❌ 241 not on WhatsApp
+[21/4/2026, 1:01:49 pm] 💾 1050/2000 — ✅ 790 valid, ❌ 260 not on WhatsApp
+[21/4/2026, 1:03:47 pm] ⚠️ Priti (1056198110) — t
+[21/4/2026, 1:04:37 pm] 💾 1100/2000 — ✅ 813 valid, ❌ 286 not on WhatsApp
+[21/4/2026, 1:07:17 pm] 💾 1150/2000 — ✅ 844 valid, ❌ 305 not on WhatsApp
+[21/4/2026, 1:09:53 pm] 💾 1200/2000 — ✅ 872 valid, ❌ 327 not on WhatsApp
+[21/4/2026, 1:12:41 pm] 💾 1250/2000 — ✅ 904 valid, ❌ 345 not on WhatsApp
+[21/4/2026, 1:15:28 pm] 💾 1300/2000 — ✅ 939 valid, ❌ 360 not on WhatsApp
+[21/4/2026, 1:18:05 pm] 💾 1350/2000 — ✅ 968 valid, ❌ 381 not on WhatsApp
+[21/4/2026, 1:20:48 pm] 💾 1400/2000 — ✅ 1000 valid, ❌ 399 not on WhatsApp
+[21/4/2026, 1:23:36 pm] 💾 1450/2000 — ✅ 1037 valid, ❌ 412 not on WhatsApp
+[21/4/2026, 1:26:23 pm] 💾 1500/2000 — ✅ 1064 valid, ❌ 435 not on WhatsApp
+[21/4/2026, 1:29:08 pm] 💾 1550/2000 — ✅ 1094 valid, ❌ 455 not on WhatsApp
+[21/4/2026, 1:31:50 pm] 💾 1600/2000 — ✅ 1122 valid, ❌ 477 not on WhatsApp
+[21/4/2026, 1:34:35 pm] 💾 1650/2000 — ✅ 1153 valid, ❌ 496 not on WhatsApp
+[21/4/2026, 1:37:13 pm] 💾 1700/2000 — ✅ 1181 valid, ❌ 518 not on WhatsApp
+[21/4/2026, 1:40:04 pm] 💾 1750/2000 — ✅ 1212 valid, ❌ 537 not on WhatsApp
+[21/4/2026, 1:42:43 pm] 💾 1800/2000 — ✅ 1246 valid, ❌ 553 not on WhatsApp
+[21/4/2026, 1:45:23 pm] 💾 1850/2000 — ✅ 1272 valid, ❌ 577 not on WhatsApp
+[21/4/2026, 1:48:06 pm] 💾 1900/2000 — ✅ 1309 valid, ❌ 590 not on WhatsApp
+[21/4/2026, 1:50:48 pm] 💾 1950/2000 — ✅ 1343 valid, ❌ 606 not on WhatsApp
+[21/4/2026, 1:53:34 pm] 💾 2000/2000 — ✅ 1376 valid, ❌ 623 not on WhatsApp
+[21/4/2026, 1:53:37 pm] 
+🎉 Done
+[21/4/2026, 1:53:37 pm]    ✅ On WhatsApp:     1376 (69%)
+[21/4/2026, 1:53:37 pm]    ❌ Not on WhatsApp: 623 (31%)
+[21/4/2026, 1:53:37 pm]    ⚠️  Errors:          1
+[21/4/2026, 2:33:41 pm] 📋 4214 pending contacts to validate
+[21/4/2026, 2:33:41 pm] ⏱  Estimated time: 246 minutes
+[21/4/2026, 2:33:49 pm] ✅ WhatsApp connected — starting validation
+[21/4/2026, 2:33:50 pm] ✅ 1/4214 — Preeti (919100772281) — on WhatsApp
+[21/4/2026, 2:34:25 pm] ✅ 11/4214 — Vamshi Chotu.com Chotu.com (919551512008) — on WhatsApp
+[21/4/2026, 2:34:58 pm] ✅ 21/4214 — Anand (919880215615) — on WhatsApp
+[21/4/2026, 2:35:28 pm] ✅ 31/4214 — Vineeta Batra Jyoti Friend (917568766662) — on WhatsApp
+[21/4/2026, 2:36:02 pm] ✅ 41/4214 — Sagarika Sarangi (919873164999) — on WhatsApp
+[21/4/2026, 2:53:18 pm] 📋 4183 pending contacts to validate
+[21/4/2026, 2:53:18 pm] ⏱  Estimated time: 209 minutes
+[21/4/2026, 2:53:18 pm] 📌 Labels: whatsapp = confirmed on WA | noweb = not on WA
+[21/4/2026, 2:53:29 pm] ✅ WhatsApp connected — starting validation
+[21/4/2026, 2:56:08 pm] 💾 50/4183 — ✅ 50 whatsapp, ❌ 0 noweb
+[21/4/2026, 2:58:57 pm] 💾 100/4183 — ✅ 100 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:01:58 pm] 💾 150/4183 — ✅ 150 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:04:45 pm] 💾 200/4183 — ✅ 200 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:07:29 pm] 💾 250/4183 — ✅ 250 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:10:16 pm] 💾 300/4183 — ✅ 300 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:13:01 pm] 💾 350/4183 — ✅ 350 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:15:47 pm] 💾 400/4183 — ✅ 400 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:18:36 pm] 📋 3783 pending contacts to validate
+[21/4/2026, 3:18:36 pm] ⏱  Estimated time: 189 minutes
+[21/4/2026, 3:18:36 pm] 📌 Labels: whatsapp = confirmed on WA | noweb = not on WA
+[21/4/2026, 3:18:43 pm] ✅ WhatsApp connected — starting validation
+[21/4/2026, 3:21:29 pm] 💾 50/3783 — ✅ 50 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:24:13 pm] 💾 100/3783 — ✅ 100 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:26:54 pm] 💾 150/3783 — ✅ 150 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:29:26 pm] 💾 200/3783 — ✅ 200 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:32:09 pm] 💾 250/3783 — ✅ 250 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:34:47 pm] 💾 300/3783 — ✅ 300 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:37:22 pm] 💾 350/3783 — ✅ 350 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:40:03 pm] 💾 400/3783 — ✅ 400 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:40:06 pm] ⚠️ Priti (1056198110) — t
+[21/4/2026, 3:42:43 pm] 💾 450/3783 — ✅ 449 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:45:25 pm] 💾 500/3783 — ✅ 499 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:48:09 pm] 💾 550/3783 — ✅ 549 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:50:56 pm] 💾 600/3783 — ✅ 599 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:53:40 pm] 💾 650/3783 — ✅ 649 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:56:24 pm] 💾 700/3783 — ✅ 699 whatsapp, ❌ 0 noweb
+[21/4/2026, 3:59:07 pm] 💾 750/3783 — ✅ 749 whatsapp, ❌ 0 noweb
+[21/4/2026, 4:01:48 pm] 💾 800/3783 — ✅ 799 whatsapp, ❌ 0 noweb
+[21/4/2026, 4:04:34 pm] 💾 850/3783 — ✅ 849 whatsapp, ❌ 0 noweb
+[21/4/2026, 4:07:20 pm] 💾 900/3783 — ✅ 899 whatsapp, ❌ 0 noweb
+[21/4/2026, 4:10:04 pm] 💾 950/3783 — ✅ 949 whatsapp, ❌ 0 noweb
+[21/4/2026, 4:12:47 pm] 💾 1000/3783 — ✅ 988 whatsapp, ❌ 11 noweb
+[21/4/2026, 4:15:30 pm] 💾 1050/3783 — ✅ 1018 whatsapp, ❌ 31 noweb
+[21/4/2026, 4:18:16 pm] 💾 1100/3783 — ✅ 1047 whatsapp, ❌ 52 noweb
+[21/4/2026, 4:20:58 pm] 💾 1150/3783 — ✅ 1080 whatsapp, ❌ 69 noweb
+[21/4/2026, 4:23:38 pm] 💾 1200/3783 — ✅ 1109 whatsapp, ❌ 90 noweb
+[21/4/2026, 4:26:23 pm] 💾 1250/3783 — ✅ 1141 whatsapp, ❌ 108 noweb
+[21/4/2026, 4:29:05 pm] 💾 1300/3783 — ✅ 1167 whatsapp, ❌ 132 noweb
+[21/4/2026, 4:31:48 pm] 💾 1350/3783 — ✅ 1203 whatsapp, ❌ 146 noweb
+[21/4/2026, 4:34:40 pm] 💾 1400/3783 — ✅ 1242 whatsapp, ❌ 157 noweb
+[21/4/2026, 4:37:24 pm] 💾 1450/3783 — ✅ 1273 whatsapp, ❌ 176 noweb
+[21/4/2026, 4:40:11 pm] 💾 1500/3783 — ✅ 1299 whatsapp, ❌ 200 noweb
+[21/4/2026, 4:42:52 pm] 💾 1550/3783 — ✅ 1336 whatsapp, ❌ 213 noweb
+[21/4/2026, 4:45:34 pm] 💾 1600/3783 — ✅ 1367 whatsapp, ❌ 232 noweb
+[21/4/2026, 4:48:14 pm] 💾 1650/3783 — ✅ 1402 whatsapp, ❌ 247 noweb
+[21/4/2026, 4:51:00 pm] 💾 1700/3783 — ✅ 1429 whatsapp, ❌ 270 noweb
+[21/4/2026, 4:53:49 pm] 💾 1750/3783 — ✅ 1468 whatsapp, ❌ 281 noweb
+[21/4/2026, 4:56:35 pm] 💾 1800/3783 — ✅ 1506 whatsapp, ❌ 293 noweb
+[21/4/2026, 4:59:25 pm] 💾 1850/3783 — ✅ 1541 whatsapp, ❌ 308 noweb
+[21/4/2026, 5:02:00 pm] 💾 1900/3783 — ✅ 1573 whatsapp, ❌ 326 noweb
+[21/4/2026, 5:02:53 pm] ⚠️ Ritu Bharti (919810887774) — Attempted to use detached Frame 'B00B6722F2782AF39C555607A684DE0B'.
+[21/4/2026, 5:02:56 pm] ⚠️ Suruchi Singh (919935943447) — Attempted to use detached Frame 'B00B6722F2782AF39C555607A684DE0B'.
+[21/4/2026, 5:02:59 pm] ⚠️ U.Rajeeb (919490312789) — Attempted to use detached Frame 'B00B6722F2782AF39C555607A684DE0B'.
+[21/4/2026, 5:03:02 pm] ⚠️ Ratna (918104497110) — Attempted to use detached Frame 'B00B6722F2782AF39C555607A684DE0B'.
+[21/4/2026, 5:03:06 pm] ⚠️ Mudita (919536971970) — Attempted to use detached Frame 'B00B6722F2782AF39C555607A684DE0B'.
+[21/4/2026, 5:03:09 pm] ⚠️ Anku Verma (917990566333) — Attempted to use detached Frame 'B00B6722F2782AF39C555607A684DE0B'.
+[21/4/2026, 5:03:12 pm] ⚠️ Sanjana Grover (919810563388) — Attempted to use detached Frame 'B00B6722F2782AF39C555607A684DE0B'.
+[21/4/2026, 5:06:40 pm] 📋 1890 pending contacts to validate
+[21/4/2026, 5:06:40 pm] ⏱  Estimated time: 95 minutes
+[21/4/2026, 5:06:40 pm] 📌 Labels: whatsapp = confirmed on WA | noweb = not on WA
+[21/4/2026, 5:06:47 pm] ✅ WhatsApp connected — starting validation
+[21/4/2026, 5:06:50 pm] ⚠️ Priti (1056198110) — t
+[21/4/2026, 5:09:30 pm] 💾 50/1890 — ✅ 37 whatsapp, ❌ 12 noweb
+[21/4/2026, 5:12:13 pm] 💾 100/1890 — ✅ 71 whatsapp, ❌ 28 noweb
+[21/4/2026, 5:15:01 pm] 💾 150/1890 — ✅ 110 whatsapp, ❌ 39 noweb
+[21/4/2026, 5:17:43 pm] 💾 200/1890 — ✅ 140 whatsapp, ❌ 59 noweb
+[21/4/2026, 5:20:23 pm] 💾 250/1890 — ✅ 171 whatsapp, ❌ 78 noweb
+[21/4/2026, 5:23:13 pm] 💾 300/1890 — ✅ 203 whatsapp, ❌ 96 noweb
+[21/4/2026, 5:25:50 pm] 💾 350/1890 — ✅ 236 whatsapp, ❌ 113 noweb
+[21/4/2026, 5:28:33 pm] 💾 400/1890 — ✅ 267 whatsapp, ❌ 132 noweb
+[21/4/2026, 5:31:18 pm] 💾 450/1890 — ✅ 298 whatsapp, ❌ 151 noweb
+[21/4/2026, 5:34:06 pm] 💾 500/1890 — ✅ 334 whatsapp, ❌ 165 noweb
+[21/4/2026, 5:36:51 pm] 💾 550/1890 — ✅ 369 whatsapp, ❌ 180 noweb
+[21/4/2026, 5:39:33 pm] 💾 600/1890 — ✅ 397 whatsapp, ❌ 202 noweb
+[21/4/2026, 5:42:15 pm] 💾 650/1890 — ✅ 432 whatsapp, ❌ 217 noweb
+[21/4/2026, 5:45:02 pm] 💾 700/1890 — ✅ 465 whatsapp, ❌ 234 noweb
+[21/4/2026, 5:47:51 pm] 💾 750/1890 — ✅ 501 whatsapp, ❌ 248 noweb
+[21/4/2026, 5:50:35 pm] 💾 800/1890 — ✅ 533 whatsapp, ❌ 266 noweb
+[21/4/2026, 5:53:21 pm] 💾 850/1890 — ✅ 563 whatsapp, ❌ 286 noweb
+[21/4/2026, 5:56:02 pm] 💾 900/1890 — ✅ 599 whatsapp, ❌ 300 noweb
+[21/4/2026, 5:58:48 pm] 💾 950/1890 — ✅ 625 whatsapp, ❌ 324 noweb
+[21/4/2026, 6:01:29 pm] 💾 1000/1890 — ✅ 661 whatsapp, ❌ 338 noweb
+[21/4/2026, 6:04:18 pm] 💾 1050/1890 — ✅ 692 whatsapp, ❌ 357 noweb
+[21/4/2026, 6:07:00 pm] 💾 1100/1890 — ✅ 720 whatsapp, ❌ 379 noweb
+[21/4/2026, 6:09:46 pm] 💾 1150/1890 — ✅ 751 whatsapp, ❌ 398 noweb
+[21/4/2026, 6:12:27 pm] 💾 1200/1890 — ✅ 781 whatsapp, ❌ 418 noweb
+[21/4/2026, 6:15:17 pm] 💾 1250/1890 — ✅ 816 whatsapp, ❌ 433 noweb
+[21/4/2026, 6:18:03 pm] 💾 1300/1890 — ✅ 850 whatsapp, ❌ 449 noweb
+[21/4/2026, 6:20:45 pm] 💾 1350/1890 — ✅ 887 whatsapp, ❌ 462 noweb
+[21/4/2026, 6:23:29 pm] 💾 1400/1890 — ✅ 919 whatsapp, ❌ 480 noweb
+[21/4/2026, 6:26:12 pm] 💾 1450/1890 — ✅ 955 whatsapp, ❌ 494 noweb
+[21/4/2026, 6:28:50 pm] 💾 1500/1890 — ✅ 985 whatsapp, ❌ 514 noweb
+[21/4/2026, 6:31:35 pm] 💾 1550/1890 — ✅ 1017 whatsapp, ❌ 532 noweb
+[21/4/2026, 6:34:15 pm] 💾 1600/1890 — ✅ 1050 whatsapp, ❌ 549 noweb
+[21/4/2026, 6:37:03 pm] 💾 1650/1890 — ✅ 1082 whatsapp, ❌ 567 noweb
+[21/4/2026, 6:39:43 pm] 💾 1700/1890 — ✅ 1116 whatsapp, ❌ 583 noweb
+[21/4/2026, 6:42:24 pm] 💾 1750/1890 — ✅ 1149 whatsapp, ❌ 600 noweb
+[21/4/2026, 6:45:03 pm] 💾 1800/1890 — ✅ 1179 whatsapp, ❌ 620 noweb
+[21/4/2026, 6:47:49 pm] 💾 1850/1890 — ✅ 1208 whatsapp, ❌ 641 noweb
+[21/4/2026, 6:49:55 pm] 
+🎉 Validation complete
+[21/4/2026, 6:49:55 pm]    whatsapp: 3188
+[21/4/2026, 6:49:55 pm]    noweb:    980
+[21/4/2026, 6:49:55 pm]    pending:  15
+[21/4/2026, 6:49:55 pm]    sent:     49

@@ -1,0 +1,297 @@
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[16/4/2026, 4:53:04 pm] 📋 Loaded 44 contacts from daily_review.xlsx
+[16/4/2026, 5:22:25 pm] ❌ daily_pick.py failed: Traceback (most recent call last):
+  File "/Users/rajivlal/Desktop/whatsapp-sender/daily_pick.py", line 39, in <module>
+    with open(MASTER) as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/home/rajiv/anugnya-whatsapp-sender/whatsapp_final.json'
+
+[16/4/2026, 5:22:32 pm] ❌ replenish.py failed: 
+[16/4/2026, 5:23:09 pm] ❌ replenish.py failed: 
+[16/4/2026, 5:23:12 pm] ❌ daily_pick.py failed: Traceback (most recent call last):
+  File "/Users/rajivlal/Desktop/whatsapp-sender/daily_pick.py", line 39, in <module>
+    with open(MASTER) as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/home/rajiv/anugnya-whatsapp-sender/whatsapp_final.json'
+
+[16/4/2026, 5:23:16 pm] ❌ daily_pick.py failed: Traceback (most recent call last):
+  File "/Users/rajivlal/Desktop/whatsapp-sender/daily_pick.py", line 39, in <module>
+    with open(MASTER) as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/home/rajiv/anugnya-whatsapp-sender/whatsapp_final.json'
+
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[16/4/2026, 5:32:08 pm] 📋 Loaded 0 contacts from daily_review.xlsx
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[16/4/2026, 5:34:16 pm] 📋 Loaded 0 contacts from daily_review.xlsx
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[16/4/2026, 5:36:58 pm] 📋 Loaded 0 contacts from daily_review.xlsx
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[16/4/2026, 5:38:09 pm] 📋 Loaded 0 contacts from daily_review.xlsx
+[16/4/2026, 5:38:23 pm] 📋 Loaded 50 contacts from daily_review.xlsx
+[16/4/2026, 5:38:23 pm] ➕ Replenish complete
+[16/4/2026, 5:39:00 pm] 📋 Loaded 50 contacts from daily_review.xlsx
+[16/4/2026, 5:39:00 pm] ➕ Replenish complete
+[16/4/2026, 5:39:40 pm] 📋 Loaded 50 contacts from daily_review.xlsx
+[16/4/2026, 5:39:40 pm] ➕ Replenish complete
+[16/4/2026, 5:40:31 pm] 📋 Loaded 50 contacts from daily_review.xlsx
+[16/4/2026, 5:40:31 pm] ➕ Replenish complete
+[16/4/2026, 5:43:44 pm] ✅ WhatsApp connected and ready
+[16/4/2026, 5:44:31 pm] 📤 Manual send — 15 contacts
+[16/4/2026, 5:44:47 pm]   ✅ Arif (919999559885)
+[16/4/2026, 5:45:41 pm]   ✅ Shubhashish (919579688259)
+[16/4/2026, 5:46:25 pm]   ✅ Gurupritkam (919971084409)
+[16/4/2026, 5:46:58 pm]   ✅ Sarika (919811101651)
+[16/4/2026, 5:47:41 pm]   ✅ Anuradha (919023246250)
+[16/4/2026, 5:48:29 pm]   ✅ Arvind (917702034111)
+[16/4/2026, 5:48:53 pm]   ❌ Samaresh (919820018100): No LID for user
+new Error (<anonymous>:6:31)
+[16/4/2026, 5:49:40 pm]   ✅ Ritu (919885461151)
+[16/4/2026, 5:50:11 pm]   ❌ Sunita (918110069360): No LID for user
+new Error (<anonymous>:6:31)
+[16/4/2026, 5:51:02 pm]   ✅ Shamaila (919995352010)
+[16/4/2026, 5:51:39 pm]   ✅ Purna (918929981474)
+[16/4/2026, 5:52:31 pm]   ✅ Sanjana (918105633880)
+[16/4/2026, 5:53:03 pm]   ❌ Mehveen (914935509040): No LID for user
+new Error (<anonymous>:6:31)
+[16/4/2026, 5:53:35 pm]   ✅ Richa (919930143531)
+[16/4/2026, 5:53:54 pm]   ❌ Soby (9180896938250): No LID for user
+new Error (<anonymous>:6:31)
+[16/4/2026, 5:54:17 pm] ✅ Manual send complete
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[17/4/2026, 10:15:46 am] 📋 Loaded 34 contacts from daily_review.xlsx
+[17/4/2026, 11:21:25 am] 📋 Loaded 50 contacts from daily_review.xlsx
+[17/4/2026, 11:21:25 am] ➕ Replenish complete
+[17/4/2026, 11:23:46 am] 📋 Loaded 50 contacts from daily_review.xlsx
+[17/4/2026, 11:23:46 am] ➕ Replenish complete
+[17/4/2026, 11:26:46 am] 📋 Loaded 50 contacts from daily_review.xlsx
+[17/4/2026, 11:26:46 am] ➕ Replenish complete
+[17/4/2026, 11:27:37 am] 📋 Loaded 50 contacts from daily_review.xlsx
+[17/4/2026, 11:27:37 am] ➕ Replenish complete
+[17/4/2026, 11:27:55 am] 📋 Loaded 50 contacts from daily_review.xlsx
+[17/4/2026, 11:27:55 am] ➕ Replenish complete
+[17/4/2026, 11:28:06 am] 📋 Loaded 50 contacts from daily_review.xlsx
+[17/4/2026, 11:28:06 am] ➕ Replenish complete
+[17/4/2026, 11:28:33 am] ✅ WhatsApp connected and ready
+[17/4/2026, 11:28:41 am] 🚀 Starting send — 50 contacts in 5 batches (10/batch, 120min intervals)
+[17/4/2026, 11:28:41 am] 
+📤 Batch 1/5
+[17/4/2026, 11:28:59 am]   ✅ Hema (919840421775)
+[17/4/2026, 11:28:59 am]   ⏳ 19s
+[17/4/2026, 11:29:19 am]   ❌ Bani (918102711470): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 11:29:19 am]   ⏳ 35s
+[17/4/2026, 11:30:07 am]   ✅ Neha (917042835451)
+[17/4/2026, 11:30:07 am]   ⏳ 34s
+[17/4/2026, 11:30:54 am]   ✅ Roopam (919987681110)
+[17/4/2026, 11:30:54 am]   ⏳ 37s
+[17/4/2026, 11:31:45 am]   ✅ Ajay (918100117140)
+[17/4/2026, 11:31:45 am]   ⏳ 32s
+[17/4/2026, 11:32:18 am]   ❌ Adeline (601922266910): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 11:32:18 am]   ⏳ 22s
+[17/4/2026, 11:32:40 am]   ❌ Hilary (917779378220): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 11:32:40 am]   ⏳ 24s
+[17/4/2026, 11:33:18 am]   ✅ Shaleen (919811498907)
+[17/4/2026, 11:33:18 am]   ⏳ 16s
+[17/4/2026, 11:33:47 am]   ✅ Pavani (919849900545)
+[17/4/2026, 11:33:47 am]   ⏳ 20s
+[17/4/2026, 11:34:20 am]   ✅ Srinivas (919989262078)
+[17/4/2026, 11:34:20 am] ⏰ Next batch at 1:34:20 pm
+[17/4/2026, 1:34:20 pm] 
+📤 Batch 2/5
+[17/4/2026, 1:34:20 pm]   ❌ Vinita (601620758420): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:34:20 pm]   ⏳ 34s
+[17/4/2026, 1:34:54 pm]   ❌ Preeti (918111076060): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:34:54 pm]   ⏳ 19s
+[17/4/2026, 1:35:13 pm]   ❌ Gopinath (918297077745): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:35:13 pm]   ⏳ 33s
+[17/4/2026, 1:35:46 pm]   ❌ Ashish (919935553760): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:35:46 pm]   ⏳ 25s
+[17/4/2026, 1:36:11 pm]   ❌ Anjaly (9170362444440): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:36:11 pm]   ⏳ 18s
+[17/4/2026, 1:36:29 pm]   ❌ Sunil (917799978881): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:36:29 pm]   ⏳ 15s
+[17/4/2026, 1:36:44 pm]   ❌ Medilogy (918660931093): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:36:44 pm]   ⏳ 22s
+[17/4/2026, 1:37:06 pm]   ❌ Anil (919010000000): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:37:06 pm]   ⏳ 16s
+[17/4/2026, 1:37:22 pm]   ❌ Akash (919619787773): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:37:22 pm]   ⏳ 38s
+[17/4/2026, 1:38:00 pm]   ❌ Srisha (917230011308): Attempted to use detached Frame '54183C78C2FF80E56885D0165FC02F1D'.
+[17/4/2026, 1:38:00 pm] ⏰ Next batch at 3:38:00 pm
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[17/4/2026, 3:37:38 pm] 📋 Loaded 43 contacts from daily_review.xlsx
+[17/4/2026, 3:38:14 pm] ✅ WhatsApp connected and ready
+[17/4/2026, 3:38:25 pm] 🚀 Starting send — 43 contacts in 5 batches (10/batch, 120min intervals)
+[17/4/2026, 3:38:25 pm] 
+📤 Batch 1/5
+[17/4/2026, 3:38:26 pm]   ❌ Bani (918102711470): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 3:38:26 pm]   ⏳ 35s
+[17/4/2026, 3:39:01 pm]   ❌ Adeline (601922266910): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 3:39:01 pm]   ⏳ 34s
+[17/4/2026, 3:39:36 pm]   ❌ Hilary (917779378220): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 3:39:36 pm]   ⏳ 38s
+[17/4/2026, 3:40:14 pm]   ❌ Vinita (601620758420): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 3:40:14 pm]   ⏳ 22s
+[17/4/2026, 3:40:54 pm]   ✅ Preeti (918111076060)
+[17/4/2026, 3:40:54 pm]   ⏳ 29s
+[17/4/2026, 3:41:36 pm]   ✅ Gopinath (918297077745)
+[17/4/2026, 3:41:36 pm]   ⏳ 29s
+[17/4/2026, 3:42:18 pm]   ✅ Ashish (919935553760)
+[17/4/2026, 3:42:18 pm]   ⏳ 26s
+[17/4/2026, 3:42:45 pm]   ❌ Anjaly (9170362444440): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 3:42:45 pm]   ⏳ 26s
+[17/4/2026, 3:43:24 pm]   ✅ Sunil (917799978881)
+[17/4/2026, 3:43:24 pm]   ⏳ 29s
+[17/4/2026, 3:44:05 pm]   ✅ Medilogy (918660931093)
+[17/4/2026, 3:44:05 pm] ⏰ Next batch at 5:44:05 pm
+[17/4/2026, 5:44:05 pm] 
+📤 Batch 2/5
+[17/4/2026, 5:44:24 pm]   ✅ Anil (919010000000)
+[17/4/2026, 5:44:24 pm]   ⏳ 23s
+[17/4/2026, 5:45:06 pm]   ✅ Akash (919619787773)
+[17/4/2026, 5:45:06 pm]   ⏳ 34s
+[17/4/2026, 5:45:59 pm]   ✅ Srisha (917230011308)
+[17/4/2026, 5:45:59 pm]   ⏳ 23s
+[17/4/2026, 5:46:42 pm]   ✅ JP (918341444483)
+[17/4/2026, 5:46:42 pm]   ⏳ 33s
+[17/4/2026, 5:47:16 pm]   ❌ Veeni (918117758110): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 5:47:16 pm]   ⏳ 18s
+[17/4/2026, 5:47:35 pm]   ❌ Srinivas (919246847432): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 5:47:35 pm]   ⏳ 25s
+[17/4/2026, 5:48:19 pm]   ✅ Venisha (919833751776)
+[17/4/2026, 5:48:19 pm]   ⏳ 19s
+[17/4/2026, 5:48:57 pm]   ✅ Ruchi (917989563008)
+[17/4/2026, 5:48:57 pm]   ⏳ 15s
+[17/4/2026, 5:49:31 pm]   ✅ Debjani (919910058777)
+[17/4/2026, 5:49:31 pm]   ⏳ 34s
+[17/4/2026, 5:50:06 pm]   ❌ CA (9170974673480): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 5:50:06 pm] ⏰ Next batch at 7:50:06 pm
+[17/4/2026, 7:50:05 pm] 
+📤 Batch 3/5
+[17/4/2026, 7:50:06 pm]   ❌ Supraja (910592953430): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 7:50:06 pm]   ⏳ 16s
+[17/4/2026, 7:50:41 pm]   ✅ Samantha (60122836760)
+[17/4/2026, 7:50:41 pm]   ⏳ 17s
+[17/4/2026, 7:50:58 pm]   ❌ Rekha (919903585930): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 7:50:58 pm]   ⏳ 18s
+[17/4/2026, 7:51:17 pm]   ❌ Archana (918189428220): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 7:51:17 pm]   ⏳ 18s
+[17/4/2026, 7:51:37 pm]   ❌ Wei (601223496880): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 7:51:37 pm]   ⏳ 37s
+[17/4/2026, 7:52:14 pm]   ❌ Greeshma (918369905315): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 7:52:14 pm]   ⏳ 18s
+[17/4/2026, 7:52:33 pm]   ❌ Lashita (916404427770): No LID for user
+new Error (<anonymous>:6:31)
+[17/4/2026, 7:52:33 pm]   ⏳ 30s
+[17/4/2026, 7:53:22 pm]   ✅ Sameer (918853025700)
+[17/4/2026, 7:53:22 pm]   ⏳ 24s
+[17/4/2026, 7:54:05 pm]   ✅ Shweta (918451005763)
+[17/4/2026, 7:54:05 pm]   ⏳ 23s
+[17/4/2026, 7:54:47 pm]   ✅ Rupam (919674525882)
+[17/4/2026, 7:54:47 pm] ⏰ Next batch at 9:54:47 pm
+[17/4/2026, 11:09:41 pm] 
+📤 Batch 4/5
+[17/4/2026, 11:09:41 pm]   ❌ Hitesh (919999350955): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[17/4/2026, 11:09:41 pm]   ⏳ 22s
+[17/4/2026, 11:50:18 pm]   ❌ Nutan (919810077955): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[17/4/2026, 11:50:18 pm]   ⏳ 29s
+[17/4/2026, 11:50:47 pm]   ❌ Srinath (919542938511): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[17/4/2026, 11:50:47 pm]   ⏳ 23s
+[18/4/2026, 12:38:18 am]   ❌ Srinivas (919912707942): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 12:38:18 am]   ⏳ 31s
+[18/4/2026, 12:51:37 am]   ❌ Soumya (9183100643280): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 12:51:37 am]   ⏳ 15s
+[18/4/2026, 1:42:49 am]   ❌ Preeti (919100772281): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 1:42:49 am]   ⏳ 21s
+[18/4/2026, 1:52:29 am]   ❌ Manju (919833217127): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 1:52:29 am]   ⏳ 33s
+[18/4/2026, 2:04:02 am]   ❌ Mangal (917935500010): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 2:04:02 am]   ⏳ 27s
+[18/4/2026, 2:04:29 am]   ❌ Nihar (919490899732): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 2:04:29 am]   ⏳ 33s
+[18/4/2026, 2:20:46 am]   ❌ Balaji (919324902898): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 2:20:46 am] ⏰ Next batch at 4:20:46 am
+[18/4/2026, 4:55:25 am] 
+📤 Batch 5/5
+[18/4/2026, 4:55:25 am]   ❌ Prashant (919833667764): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 4:55:25 am]   ⏳ 33s
+[18/4/2026, 5:13:52 am]   ❌ Jayadeepa (919362019729): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 5:13:52 am]   ⏳ 18s
+[18/4/2026, 5:20:26 am]   ❌ Aayushi (9174860272880): Attempted to use detached Frame 'F4C55571F5F43E908482E5843B2D5948'.
+[18/4/2026, 5:20:26 am] 
+🎉 Done — Sent: 16 | Failed: 27
+[21/4/2026, 10:07:58 am] 📋 Loaded 34 contacts from daily_review.xlsx
+[21/4/2026, 10:07:58 am] ➕ Replenish complete
+[21/4/2026, 10:09:08 am] 📋 Loaded 50 contacts from daily_review.xlsx
+[21/4/2026, 10:09:08 am] ➕ Replenish complete
+
+✅ Anugnya WhatsApp Sender running
+   Open: http://localhost:3000
+
+[21/4/2026, 10:25:50 am] 📋 Loaded 49 contacts from daily_review.xlsx
+[21/4/2026, 10:26:27 am] ✅ WhatsApp connected and ready
+[21/4/2026, 10:28:57 am] 📤 Manual send — 15 contacts
+[21/4/2026, 10:28:58 am]   ❌ Bani (918102711470): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:29:35 am]   ❌ Hilary (917779378220): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:29:53 am]   ❌ Vinita (601620758420): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:30:17 am]   ❌ Anjaly (9170362444440): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:30:42 am]   ❌ Veeni (918117758110): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:31:08 am]   ❌ Srinivas (919246847432): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:31:35 am]   ❌ CA (9170974673480): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:31:57 am]   ❌ Supraja (910592953430): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:32:29 am]   ❌ Rekha (919903585930): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:32:59 am]   ❌ Archana (918189428220): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:33:35 am]   ❌ Wei (601223496880): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:34:06 am]   ❌ Greeshma (918369905315): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:34:29 am]   ❌ Lashita (916404427770): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:35:10 am]   ✅ Srinath (919542938511)
+[21/4/2026, 10:35:26 am]   ❌ Srinivas (919912707942): No LID for user
+new Error (<anonymous>:6:31)
+[21/4/2026, 10:35:49 am] ✅ Manual send complete

@@ -8,8 +8,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-MASTER     = "/home/rajiv/anugnya-whatsapp-sender/whatsapp_final.json"
-REVIEW     = "/home/rajiv/anugnya-whatsapp-sender/daily_review.xlsx"
+MASTER     = "/Users/rajivlal/Desktop/whatsapp-sender/whatsapp_final.json"
+REVIEW     = "/Users/rajivlal/Desktop/whatsapp-sender/daily_review.xlsx"
 BATCH_SIZE = 50
 
 def fix_name(val):

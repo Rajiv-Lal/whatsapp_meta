@@ -84,7 +84,7 @@ function loadReviewFromFile() {
     if (fs.existsSync(MASTER)) {
       JSON.parse(fs.readFileSync(MASTER)).forEach(r => {
         const st = String(r.status || '').trim();
-        if (st === 'sent' || st === 'skip') sentPhones.add(String(r['Phone Number'] || '').trim().slice(-10));
+        if (st === 'sent' || st === 'skip' || st === 'noweb') sentPhones.add(String(r['Phone Number'] || '').trim().slice(-10));
       });
     }
     reviewContacts = rows
@@ -152,15 +152,12 @@ async function sendToContact(contact, videoMedia) {
     await sleep(3000);
     await waClient.sendMessage(chatId, buildMessage(contact));
     state.sentToday++;
+    // Remove from review list immediately after successful send
+    reviewContacts = reviewContacts.filter(r => String(r['Phone Number']).trim() !== phone);
     log(`  ✅ ${name} (${phone})`);
     broadcast({ type: 'contact_sent', phone, name, status: 'sent' });
     return true;
   } catch (err) {
-    if (err.message && err.message.includes("No LID")) {
-      const rows = readMaster();
-      saveMaster(rows.map(r => { const p = String(r["Phone Number"]||"").trim(); return (p===phone||p.slice(-10)===phone.slice(-10)) ? {...r,status:"skip"} : r; }));
-      log(`  ⏭ ${name} (${phone}) — not on WhatsApp, skipped permanently`);
-    }
     state.failedToday++;
     log(`  ❌ ${name} (${phone}): ${err.message}`, 'error');
     broadcast({ type: 'contact_sent', phone, name, status: 'failed' });
@@ -252,7 +249,8 @@ app.delete('/api/contacts/:phone', (req, res) => {
 
 // Pick
 app.post('/api/pick', (req, res) => {
-  execFile('python3', [path.join(BASE, 'daily_pick.py')], (err, stdout, stderr) => {
+  const count = String(parseInt(req.body.count) || loadConfig().dailyLimit || 50);
+  execFile('python3', [path.join(BASE, 'daily_pick.py'), count], (err, stdout, stderr) => {
     if (err) { log('❌ daily_pick.py failed: ' + stderr, 'error'); return res.status(500).json({ error: stderr }); }
     loadReviewFromFile(); log('📋 Daily pick complete');
     res.json({ ok: true, count: reviewContacts.length });
@@ -293,10 +291,16 @@ app.post('/api/send/manual', async (req, res) => {
   res.json({ ok: true, sending: toSend.length });
   const videoMedia = MessageMedia.fromFilePath(VIDEO);
   const sentPhones = new Set();
+  state.sentToday = state.sentToday || 0;
+  state.failedToday = state.failedToday || 0;
   log(`📤 Manual send — ${toSend.length} contacts`);
   for (const contact of toSend) {
     const phone = String(contact['Phone Number']).trim();
-    if (await sendToContact(contact, videoMedia)) { sentPhones.add(phone.slice(-10)); contact._sent = true; }
+    if (await sendToContact(contact, videoMedia)) {
+      sentPhones.add(phone.slice(-10));
+      contact._sent = true;
+    }
+    broadcastState();
     await sleep(randDelay(cfg.delayMinSec, cfg.delayMaxSec));
   }
   updateMasterSent(sentPhones);

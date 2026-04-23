@@ -183,6 +183,7 @@ tbody td{padding:10px 14px;vertical-align:middle;color:var(--text);}
       <div class="page-sub">Check first names and remove contacts you do not want to send today.</div>
       <div class="toolbar">
         <input class="search-input" type="text" placeholder="Search name or phone..." id="searchInput" oninput="filterTable()">
+        <input type="number" id="pickCount" value="50" min="1" max="200" style="width:65px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'Inter',sans-serif;color:var(--text);background:var(--bg);">
         <button class="btn btn-ghost" onclick="runPick()">📋 Pick</button>
         <button class="btn btn-ghost" onclick="runReplenish()">➕ Replenish</button>
         <button class="btn btn-teal" onclick="loadContacts()">🔄 Refresh</button>
@@ -425,7 +426,7 @@ async function deleteContact(phone){
   loadMasterStats();
 }
 async function connectWA(){await fetch('/api/connect',{method:'POST'});toast('Connecting to WhatsApp...');}
-async function runPick(){toast("Picking contacts...");const res=await fetch('/api/pick',{method:'POST'});const d=await res.json();if(d.ok){await loadContacts();toast(`✅ ${d.count} contacts picked`);}else toast('❌ Pick failed: '+d.error,true);}
+async function runPick(){const count=parseInt(document.getElementById('pickCount')?.value)||50;toast(`Picking ${count} contacts...`);const res=await fetch('/api/pick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count})});const d=await res.json();if(d.ok){await loadContacts();toast(`✅ ${d.count} contacts picked`);}else toast('❌ Pick failed: '+d.error,true);}
 async function runReplenish(){toast('Replenishing...');const res=await fetch('/api/replenish',{method:'POST'});const d=await res.json();if(d.ok){await loadContacts();toast(`✅ Replenished to ${d.count}`);}else toast('❌ Failed: '+d.error,true);}
 async function startSend(){const res=await fetch('/api/send/start',{method:'POST'});const d=await res.json();if(!d.ok)toast(d.msg,true);else toast('▶ Sending started');}
 async function pauseSend(){const res=await fetch('/api/send/pause',{method:'POST'});const d=await res.json();toast(d.paused?'⏸ Paused':'▶ Resumed');}
@@ -477,7 +478,18 @@ async function loadLog(){const res=await fetch('/api/log');const data=await res.
 function appendLog(msg){const box=document.getElementById('logBox');const div=document.createElement('div');let cls=msg.level==='error'?'error':msg.level==='warn'?'warn':(msg.msg.includes('✅')||msg.msg.includes('🎉'))?'success':'';div.className=`log-line ${cls}`;div.textContent=`[${msg.ts}] ${msg.msg}`;box.insertBefore(div,box.firstChild);}
 async function loadHistory(){const res=await fetch('/api/history');const data=await res.json();const el=document.getElementById('historyList');if(!data.length)return;el.innerHTML=data.map(h=>`<div class="history-item"><div class="history-date">${h.date}</div><div class="history-stats"><span class="h-sent">✅ ${h.sent} sent</span><span class="h-failed">❌ ${h.failed} failed</span><span class="h-total">${h.total} total</span></div></div>`).join('');}
 async function loadMasterStats(){const res=await fetch('/api/master/stats');const data=await res.json();document.getElementById('sbPending').textContent=data.pending;document.getElementById('sbSent').textContent=data.sent;document.getElementById('sbSkip').textContent=data.skip||0;document.getElementById('dash-remaining').textContent=data.pending;}
-function handleContactSent(msg){recentSends.unshift(msg);if(recentSends.length>20)recentSends=recentSends.slice(0,20);document.getElementById('recentSends').innerHTML=recentSends.map(m=>`<div class="recent-item"><span>${m.status==='sent'?'✅':'❌'}</span><strong style="color:var(--text)">${m.name||'—'}</strong><span class="td-phone">${m.phone}</span></div>`).join('');}
+function handleContactSent(msg){
+  recentSends.unshift(msg);
+  if(recentSends.length>20)recentSends=recentSends.slice(0,20);
+  document.getElementById('recentSends').innerHTML=recentSends.map(m=>`<div class="recent-item"><span>${m.status==='sent'?'✅':'❌'}</span><strong style="color:var(--text)">${m.name||'—'}</strong><span class="td-phone">${m.phone}</span></div>`).join('');
+  // Remove from Daily Review table immediately after sent
+  if(msg.status==='sent'){
+    contacts=contacts.filter(c=>String(c['Phone Number']).trim()!==msg.phone);
+    document.getElementById(`row-${msg.phone}`)?.remove();
+    document.getElementById('dash-review').textContent=contacts.length;
+    document.getElementById('contactCount').textContent=`${contacts.length} contacts`;
+  }
+}
 function showPanel(id,btn){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
