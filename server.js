@@ -1,22 +1,25 @@
 'use strict';
 
 /**
- * Anugnya WhatsApp Sender
- * server.js — Clean rewrite with robust startup
+ * WhatsApp Sender v3
+ * server.js
  *
- * Fix: Added server error handler + port-kill on startup
- * to prevent EADDRINUSE crash loop with LaunchAgent.
+ * Port: 3004
+ * Features: Campaign management, Excel/CSV import, labels, WA check,
+ *           media (image/video/PDF), auto/manual pace mode, batch sending
  */
 
 const express   = require('express');
 const http      = require('http');
 const WebSocket = require('ws');
-const XLSX      = require('xlsx');
-const fs        = require('fs');
 const path      = require('path');
+const fs        = require('fs');
+const multer    = require('multer');
+const XLSX      = require('xlsx');
 const qrcode    = require('qrcode');
-const { execSync, execFile } = require('child_process');
+const { execSync } = require('child_process');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const db        = require('./database/db');
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SETUP
@@ -29,65 +32,39 @@ const wss    = new WebSocket.Server({ server });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ══════════════════════════════════════════════════════════════════════════════
-// PATHS
-// ══════════════════════════════════════════════════════════════════════════════
+// ── Paths ─────────────────────────────────────────────────────────────────────
+const BASE        = __dirname;
+const SESSION_DIR = path.join(BASE, 'sessions');
+const UPLOADS_DIR = path.join(BASE, 'uploads');
+const LOG_FILE    = path.join(BASE, 'send.log');
 
-const BASE    = __dirname;
-const REVIEW  = path.join(BASE, 'daily_review.xlsx');
-const MASTER  = path.join(BASE, 'whatsapp_final.json');
-const VIDEO   = path.join(BASE, 'media', 'anugnya_video.mp4');
-const SESSION = path.join(BASE, 'session');
-const LOG     = path.join(BASE, 'send_log.txt');
-const HISTORY = path.join(BASE, 'history.json');
-const CONFIG  = path.join(BASE, 'config.json');
+[SESSION_DIR, UPLOADS_DIR, path.join(BASE, 'data')].forEach(d => {
+  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+});
 
-// ══════════════════════════════════════════════════════════════════════════════
-// CONFIG — all settings editable from UI
-// ══════════════════════════════════════════════════════════════════════════════
-
-const DEFAULT_CONFIG = {
-  senderName:       'Rajiv',
-  messageTemplate:  'Namaste {name}, our focus going forward is using energy healing to help cancer patients manage treatment side effects — physically, emotionally and mentally — so treatment stays on track. Keep this for someone who might need it.',
-  websiteUrl:       'www.anugnyaholisticcare.com',
-  dailyLimit:       50,
-  batchSize:        10,
-  batchIntervalMin: 120,
-  delayMinSec:      15,
-  delayMaxSec:      40
-};
-
-function loadConfig() {
-  if (fs.existsSync(CONFIG)) {
-    try { return { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(CONFIG, 'utf8')) }; } catch {}
+// ── File uploads (contacts + media) ──────────────────────────────────────────
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename:    (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
   }
-  return { ...DEFAULT_CONFIG };
-}
-
-function saveConfig(cfg) {
-  fs.writeFileSync(CONFIG, JSON.stringify(cfg, null, 2));
-}
+});
+const upload = multer({ storage, limits: { fileSize: 100 * 1024 * 1024 } }); // 100MB
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════════
 
 let state = {
-  status:       'idle',  // idle | connecting | qr | ready | sending | paused | error
-  qrDataUrl:    null,
-  currentBatch: 0,
-  totalBatches: 0,
-  sentToday:    0,
-  failedToday:  0,
-  totalContacts: 0,
-  startTime:    null,
-  nextBatchAt:  null,
-  pauseRequested: false,
-  stopRequested:  false
+  whatsapp: 'disconnected', // disconnected | connecting | qr | ready | error
+  qrDataUrl: null,
+  sending: null  // null or { campaignId, campaignName, status, currentBatch,
+                 //           totalBatches, sent, failed, skipped, total,
+                 //           startTime, nextBatchAt, pauseRequested, stopRequested }
 };
 
-let reviewContacts = [];
-let waClient       = null;
+let waClient = null;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGGING & BROADCAST
@@ -95,17 +72,15 @@ let waClient       = null;
 
 function log(msg, type = 'info') {
   const ts   = new Date().toLocaleString('en-IN');
-  const line = `[${ts}] ${msg}`;
+  const line = `[${ts}] [${type.toUpperCase()}] ${msg}`;
   console.log(line);
-  try { fs.appendFileSync(LOG, line + '\n'); } catch {}
+  try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch {}
   broadcast({ type: 'log', msg, level: type, ts });
 }
 
 function broadcast(data) {
   const payload = JSON.stringify(data);
-  wss.clients.forEach(c => {
-    if (c.readyState === WebSocket.OPEN) c.send(payload);
-  });
+  wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(payload); });
 }
 
 function broadcastState() {
@@ -117,61 +92,49 @@ function broadcastState() {
 // HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function randDelay(minSec, maxSec) {
   return (Math.floor(Math.random() * (maxSec - minSec)) + minSec) * 1000;
 }
 
-function loadReviewFromFile() {
-  if (!fs.existsSync(REVIEW)) { reviewContacts = []; return; }
-  try {
-    const wb   = XLSX.readFile(REVIEW);
-    const ws   = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', range: 1, raw: false });
+/**
+ * Build the message text for a contact.
+ * Supports {name}, {first_name}, {last_name}, {label} placeholders.
+ */
+function buildMessage(campaign, contact) {
+  const firstName = contact.first_name || contact.name?.split(' ')[0] || 'Friend';
+  const lastName  = contact.last_name  || '';
+  const fullName  = contact.name       || `${firstName} ${lastName}`.trim();
+  const label     = contact.label      || '';
 
-    const sentPhones = new Set();
-    if (fs.existsSync(MASTER)) {
-      JSON.parse(fs.readFileSync(MASTER)).forEach(r => {
-        const st = String(r.status || '').trim();
-        if (st === 'sent' || st === 'skip' || st === 'noweb') {
-          sentPhones.add(String(r['Phone Number'] || '').trim().slice(-10));
-        }
-      });
-    }
+  let msg = '';
 
-    reviewContacts = rows
-      .map(r => {
-        r['Phone Number'] = String(r['Phone Number'] || '').trim().replace(/\.0+$/, '');
-        return r;
-      })
-      .filter(r => r['Phone Number'] && r['Phone Number'] !== 'nan' && !sentPhones.has(r['Phone Number'].slice(-10)));
-
-    log(`📋 Loaded ${reviewContacts.length} contacts from daily_review.xlsx`);
-  } catch (e) {
-    log('❌ Error reading review file: ' + e.message, 'error');
-    reviewContacts = [];
+  if (campaign.salutation) {
+    msg += `${campaign.salutation} ${firstName},\n\n`;
   }
+
+  msg += (campaign.message_template || '')
+    .replace(/\{first_name\}/gi, firstName)
+    .replace(/\{last_name\}/gi,  lastName)
+    .replace(/\{name\}/gi,       fullName)
+    .replace(/\{label\}/gi,      label);
+
+  if (campaign.signature) {
+    msg += `\n\n${campaign.signature}`;
+  }
+
+  return msg.trim();
 }
 
-function readMaster() {
-  if (!fs.existsSync(MASTER)) return [];
-  try { return JSON.parse(fs.readFileSync(MASTER)); } catch { return []; }
-}
-
-function saveMaster(rows) {
-  fs.writeFileSync(MASTER, JSON.stringify(rows));
-}
-
-function updateMasterSent(sentPhones) {
-  const rows  = readMaster();
-  const today = new Date().toLocaleDateString('en-IN');
-  saveMaster(rows.map(r => {
-    const p = String(r['Phone Number'] || '').trim().slice(-10);
-    return sentPhones.has(p)
-      ? { ...r, status: 'sent', dateSent: today }
-      : r;
-  }));
+/**
+ * Parse an uploaded Excel or CSV file into an array of row objects.
+ */
+function parseUploadedFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const wb  = XLSX.readFile(filePath);
+  const ws  = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -179,18 +142,15 @@ function updateMasterSent(sentPhones) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 function initWhatsApp() {
-  if (waClient) {
-    log('⚠️ WhatsApp already initialised');
-    return;
-  }
+  if (waClient) { log('⚠️ WhatsApp client already exists'); return; }
 
   log('🔄 Initialising WhatsApp...');
-  state.status    = 'connecting';
+  state.whatsapp  = 'connecting';
   state.qrDataUrl = null;
   broadcastState();
 
   waClient = new Client({
-    authStrategy: new LocalAuth({ dataPath: SESSION }),
+    authStrategy: new LocalAuth({ dataPath: SESSION_DIR }),
     puppeteer: {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -199,323 +159,503 @@ function initWhatsApp() {
 
   waClient.on('qr', async (qr) => {
     log('📱 QR code ready — scan with WhatsApp');
-    state.status    = 'qr';
+    state.whatsapp  = 'qr';
     state.qrDataUrl = await qrcode.toDataURL(qr);
     broadcastState();
   });
 
   waClient.on('ready', () => {
-    log('✅ WhatsApp connected');
-    state.status    = 'ready';
+    log('✅ WhatsApp connected and ready');
+    state.whatsapp  = 'ready';
     state.qrDataUrl = null;
+    db.setSetting('whatsapp_status', 'ready');
     broadcastState();
   });
 
   waClient.on('authenticated', () => {
     log('🔐 WhatsApp authenticated');
-    state.status = 'connecting';
+    state.whatsapp = 'connecting';
     broadcastState();
   });
 
   waClient.on('auth_failure', (msg) => {
-    log(`❌ Auth failed: ${msg}`, 'error');
-    state.status = 'error';
-    waClient     = null;
+    log(`❌ WhatsApp auth failed: ${msg}`, 'error');
+    state.whatsapp = 'error';
+    waClient       = null;
     broadcastState();
   });
 
   waClient.on('disconnected', (reason) => {
     log(`❌ WhatsApp disconnected: ${reason}`, 'error');
-    state.status    = 'idle';
+    state.whatsapp  = 'disconnected';
     state.qrDataUrl = null;
     waClient        = null;
+    db.setSetting('whatsapp_status', 'disconnected');
     broadcastState();
   });
 
   waClient.initialize().catch(err => {
-    log(`❌ Init error: ${err.message}`, 'error');
-    state.status = 'error';
-    waClient     = null;
+    log(`❌ WhatsApp init error: ${err.message}`, 'error');
+    state.whatsapp = 'error';
+    waClient       = null;
     broadcastState();
   });
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// SEND LOGIC
-// ══════════════════════════════════════════════════════════════════════════════
-
-async function sendToContact(contact, videoMedia) {
-  const cfg   = loadConfig();
-  const phone = String(contact['Phone Number']).trim();
-  const name  = String(contact['Full Name'] || contact['Name'] || '').split(' ')[0].trim() || 'Friend';
-
-  const chatId  = (phone.startsWith('91') ? phone : '91' + phone.slice(-10)) + '@c.us';
-  const message = cfg.messageTemplate.replace('{name}', name);
+/**
+ * Send a single WhatsApp message with optional media.
+ */
+async function sendMessage(phone, message, mediaPath = null, mediaFirst = false) {
+  if (!waClient || state.whatsapp !== 'ready') {
+    return { success: false, error: 'WhatsApp not connected' };
+  }
 
   try {
-    // Send video first
-    if (videoMedia && fs.existsSync(VIDEO)) {
-      await waClient.sendMessage(chatId, videoMedia);
-      await sleep(2000);
+    const chatId = phone + '@c.us';
+    let   media  = null;
+
+    if (mediaPath && fs.existsSync(mediaPath)) {
+      media = MessageMedia.fromFilePath(mediaPath);
     }
-    // Send text
-    await waClient.sendMessage(chatId, message);
 
-    state.sentToday++;
-    log(`  ✅ ${name} (${phone})`);
+    if (media && mediaFirst) {
+      await waClient.sendMessage(chatId, media);
+      await sleep(1500);
+      await waClient.sendMessage(chatId, message);
+    } else if (media && !mediaFirst) {
+      await waClient.sendMessage(chatId, message);
+      await sleep(1500);
+      await waClient.sendMessage(chatId, media);
+    } else {
+      await waClient.sendMessage(chatId, message);
+    }
 
-    // Append to history
-    const history = fs.existsSync(HISTORY) ? JSON.parse(fs.readFileSync(HISTORY)) : [];
-    history.unshift({ phone, name, status: 'sent', ts: new Date().toISOString() });
-    fs.writeFileSync(HISTORY, JSON.stringify(history.slice(0, 5000)));
-
-    return true;
+    return { success: true };
   } catch (err) {
-    state.failedToday++;
-    log(`  ❌ ${name} (${phone}): ${err.message}`, 'error');
-
-    const history = fs.existsSync(HISTORY) ? JSON.parse(fs.readFileSync(HISTORY)) : [];
-    history.unshift({ phone, name, status: 'failed', error: err.message, ts: new Date().toISOString() });
-    fs.writeFileSync(HISTORY, JSON.stringify(history.slice(0, 5000)));
-
-    return false;
+    return { success: false, error: err.message };
   }
 }
 
-async function runSend() {
-  const cfg   = loadConfig();
-  const limit = cfg.dailyLimit;
+/**
+ * Check if a phone number is registered on WhatsApp.
+ */
+async function checkWaNumber(phone) {
+  if (!waClient || state.whatsapp !== 'ready') return null;
+  try {
+    const isRegistered = await waClient.isRegisteredUser(phone + '@c.us');
+    return isRegistered;
+  } catch { return null; }
+}
 
-  if (!fs.existsSync(VIDEO)) {
-    log('❌ Video file not found at ' + VIDEO, 'error');
-    state.status = 'ready';
-    broadcastState();
+// ══════════════════════════════════════════════════════════════════════════════
+// SENDING ENGINE
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function runCampaign(campaignId) {
+  const campaign = db.getCampaign(campaignId);
+  if (!campaign) { log(`❌ Campaign ${campaignId} not found`, 'error'); return; }
+
+  const settings  = db.getCampaignSettings(campaignId);
+  const daily     = settings.daily_limit;
+  const mediaFirst = settings.media_first || !!campaign.media_first;
+  const mediaPath  = campaign.media_path || null;
+
+  // Get pending contacts up to daily limit
+  const contacts = db.getPendingContacts(campaignId, daily);
+  if (!contacts.length) {
+    log(`⚠️ No pending contacts in campaign "${campaign.name}"`);
+    db.updateCampaign(campaignId, { status: 'completed' });
     return;
   }
 
-  const toSend = reviewContacts.filter(c => !c._sent).slice(0, limit);
-  if (!toSend.length) {
-    log('❌ No contacts to send to', 'error');
-    state.status = 'ready';
-    broadcastState();
-    return;
+  // Split into batches
+  const batchSize = settings.batch_size;
+  const batches   = [];
+  for (let i = 0; i < contacts.length; i += batchSize) {
+    batches.push(contacts.slice(i, i + batchSize));
   }
 
-  const batchSize   = cfg.batchSize;
-  const batches     = [];
-  for (let i = 0; i < toSend.length; i += batchSize) {
-    batches.push(toSend.slice(i, i + batchSize));
-  }
+  state.sending = {
+    campaignId,
+    campaignName:  campaign.name,
+    status:        'sending',
+    currentBatch:  0,
+    totalBatches:  batches.length,
+    sent:          0,
+    failed:        0,
+    skipped:       0,
+    noweb:         0,
+    total:         contacts.length,
+    startTime:     new Date().toISOString(),
+    nextBatchAt:   null,
+    pauseRequested: false,
+    stopRequested:  false
+  };
 
-  state.status       = 'sending';
-  state.totalBatches = batches.length;
-  state.totalContacts = toSend.length;
-  state.startTime    = new Date().toISOString();
-  state.sentToday    = 0;
-  state.failedToday  = 0;
-  state.pauseRequested = false;
-  state.stopRequested  = false;
+  db.updateCampaign(campaignId, { status: 'active' });
   broadcastState();
-
-  log(`🚀 Starting send — ${toSend.length} contacts in ${batches.length} batches`);
-
-  const videoMedia   = MessageMedia.fromFilePath(VIDEO);
-  const sentPhones   = new Set();
+  log(`🚀 Campaign "${campaign.name}" — ${contacts.length} contacts, ${batches.length} batches`);
 
   for (let b = 0; b < batches.length; b++) {
-    if (state.stopRequested) { log('🛑 Stopped'); break; }
-    while (state.pauseRequested) {
-      await sleep(5000);
-      if (state.stopRequested) break;
-    }
+    if (state.sending.stopRequested) { log('🛑 Stopped by user'); break; }
 
-    state.currentBatch = b + 1;
+    // Wait while paused
+    while (state.sending.pauseRequested) {
+      await sleep(3000);
+      if (state.sending.stopRequested) break;
+    }
+    if (state.sending.stopRequested) break;
+
+    state.sending.currentBatch = b + 1;
     broadcastState();
-    log(`📦 Batch ${b + 1}/${batches.length}`);
+    log(`📦 Batch ${b + 1}/${batches.length} — ${batches[b].length} contacts`);
 
     for (const contact of batches[b]) {
-      if (state.stopRequested) break;
+      if (state.sending.stopRequested) break;
 
-      const phone = String(contact['Phone Number']).trim();
-      const sent  = await sendToContact(contact, videoMedia);
-      if (sent) { sentPhones.add(phone.slice(-10)); contact._sent = true; }
+      // WA check if enabled
+      if (settings.wa_check_enabled && contact.wa_valid === null) {
+        const isWa = await checkWaNumber(contact.phone);
+        if (isWa !== null) db.setWaValid(campaignId, contact.phone, isWa);
+        if (isWa === false) {
+          db.updateContactStatus(contact.id, 'noweb');
+          db.recordHistory({
+            campaign_id: campaignId, campaign_contact_id: contact.id,
+            campaign_name: campaign.name, phone: contact.phone,
+            name: contact.name, label: contact.label, status: 'noweb'
+          });
+          state.sending.noweb++;
+          log(`📵 Not on WA: ${contact.first_name} (${contact.phone})`);
+          broadcastState();
+          continue;
+        }
+      }
+
+      // Build and send message
+      const message = buildMessage(campaign, contact);
+      const result  = await sendMessage(contact.phone, message, mediaPath, mediaFirst);
+
+      if (result.success) {
+        db.updateContactStatus(contact.id, 'sent');
+        db.recordHistory({
+          campaign_id: campaignId, campaign_contact_id: contact.id,
+          campaign_name: campaign.name, phone: contact.phone,
+          name: contact.name, label: contact.label, status: 'sent'
+        });
+        state.sending.sent++;
+        log(`  ✅ ${contact.first_name || contact.name} (${contact.phone})`);
+      } else {
+        db.updateContactStatus(contact.id, 'failed', result.error);
+        db.recordHistory({
+          campaign_id: campaignId, campaign_contact_id: contact.id,
+          campaign_name: campaign.name, phone: contact.phone,
+          name: contact.name, label: contact.label, status: 'failed', error: result.error
+        });
+        state.sending.failed++;
+        log(`  ❌ ${contact.first_name || contact.name}: ${result.error}`, 'error');
+      }
+
       broadcastState();
-      await sleep(randDelay(cfg.delayMinSec, cfg.delayMaxSec));
+
+      // Delay between messages
+      if (!state.sending.stopRequested) {
+        await sleep(randDelay(settings.delay_min, settings.delay_max));
+      }
     }
 
-    if (b < batches.length - 1 && !state.stopRequested) {
-      const nextAt = new Date(Date.now() + cfg.batchIntervalMin * 60 * 1000);
-      state.nextBatchAt = nextAt.toISOString();
+    // Batch interval (not after last batch)
+    if (b < batches.length - 1 && !state.sending.stopRequested) {
+      const nextAt = new Date(Date.now() + settings.batch_interval_min * 60 * 1000);
+      state.sending.nextBatchAt = nextAt.toISOString();
       broadcastState();
-      log(`⏸ Batch done. Next at ${nextAt.toLocaleTimeString('en-IN')}`);
-      await sleep(cfg.batchIntervalMin * 60 * 1000);
-      state.nextBatchAt = null;
+      log(`⏸ Batch done. Next batch at ${nextAt.toLocaleTimeString('en-IN')} (${settings.batch_interval_min} mins)`);
+      await sleep(settings.batch_interval_min * 60 * 1000);
+      state.sending.nextBatchAt = null;
     }
   }
 
-  updateMasterSent(sentPhones);
-  log(`✅ Send complete — ${state.sentToday} sent, ${state.failedToday} failed`);
-  state.status    = 'ready';
-  state.startTime = null;
+  const finalStatus = state.sending.stopRequested ? 'paused' : 'completed';
+  db.updateCampaign(campaignId, { status: finalStatus });
+
+  log(`✅ Campaign "${campaign.name}" ${finalStatus} — ${state.sending.sent} sent, ${state.sending.failed} failed, ${state.sending.noweb} not on WA`);
+  state.sending = null;
   broadcastState();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// API ROUTES
+// API ROUTES — STATUS & WHATSAPP
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Status
 app.get('/api/status', (req, res) => {
-  res.json({ ...state, contactsLoaded: reviewContacts.length });
+  res.json({ ...state, qrDataUrl: undefined });
 });
 
 app.get('/api/qr', (req, res) => {
-  res.json({ qrDataUrl: state.qrDataUrl, status: state.status });
+  res.json({ qrDataUrl: state.qrDataUrl, status: state.whatsapp });
 });
 
-// WhatsApp connection
-app.post('/api/connect', (req, res) => {
-  if (state.status === 'ready') return res.json({ ok: true, msg: 'Already connected' });
-  if (state.status === 'connecting' || state.status === 'qr') return res.json({ ok: true, msg: 'Connecting...' });
+app.post('/api/whatsapp/connect', (req, res) => {
+  if (state.whatsapp === 'ready')      return res.json({ ok: true, msg: 'Already connected' });
+  if (state.whatsapp === 'connecting' ||
+      state.whatsapp === 'qr')         return res.json({ ok: true, msg: 'Connecting...' });
   initWhatsApp();
   res.json({ ok: true });
 });
 
-app.post('/api/disconnect', async (req, res) => {
+app.post('/api/whatsapp/disconnect', async (req, res) => {
   if (waClient) {
     try { await waClient.logout(); } catch {}
-    waClient     = null;
-    state.status = 'idle';
+    waClient        = null;
+    state.whatsapp  = 'disconnected';
     state.qrDataUrl = null;
     broadcastState();
   }
   res.json({ ok: true });
 });
 
-// Config / Settings
-app.get('/api/config', (req, res) => {
-  res.json(loadConfig());
+// ══════════════════════════════════════════════════════════════════════════════
+// API ROUTES — SETTINGS
+// ══════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/settings', (req, res) => {
+  res.json(db.getAllSettings());
 });
 
-app.post('/api/config', (req, res) => {
-  const cfg = { ...loadConfig(), ...req.body };
-  saveConfig(cfg);
-  res.json({ ok: true, config: cfg });
-});
-
-// Contacts — reload from xlsx
-app.post('/api/contacts/reload', (req, res) => {
-  loadReviewFromFile();
-  res.json({ ok: true, count: reviewContacts.length });
-});
-
-app.get('/api/contacts', (req, res) => {
-  const limit  = parseInt(req.query.limit) || 100;
-  const offset = parseInt(req.query.offset) || 0;
-  res.json({
-    total:    reviewContacts.length,
-    contacts: reviewContacts.slice(offset, offset + limit)
-  });
-});
-
-// Master stats
-app.get('/api/stats', (req, res) => {
-  try {
-    const rows = readMaster();
-    res.json({
-      total:   rows.length,
-      pending: rows.filter(r => !String(r.status || '').trim() || String(r.status).trim() === 'pending').length,
-      sent:    rows.filter(r => String(r.status || '').trim() === 'sent').length,
-      failed:  rows.filter(r => String(r.status || '').trim() === 'failed').length,
-      skip:    rows.filter(r => String(r.status || '').trim() === 'skip').length
-    });
-  } catch { res.json({ total: 0, pending: 0, sent: 0, failed: 0, skip: 0 }); }
-});
-
-// Replenish contacts from Python script
-app.post('/api/replenish', (req, res) => {
-  const scriptPath = path.join(BASE, 'replenish.py');
-  if (!fs.existsSync(scriptPath)) {
-    return res.status(404).json({ error: 'replenish.py not found' });
+app.post('/api/settings', (req, res) => {
+  const allowed = [
+    'default_country_code', 'default_batch_size', 'default_batch_interval_min',
+    'default_delay_min', 'default_delay_max', 'default_daily_limit',
+    'default_media_first', 'default_wa_check'
+  ];
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) db.setSetting(key, req.body[key]);
   }
-  execFile('python3', [scriptPath], (err, stdout, stderr) => {
-    if (err) {
-      log('❌ replenish.py failed: ' + stderr, 'error');
-      return res.status(500).json({ error: stderr });
-    }
-    loadReviewFromFile();
-    log('➕ Replenish complete — ' + reviewContacts.length + ' contacts');
-    res.json({ ok: true, count: reviewContacts.length });
-  });
+  res.json({ ok: true, settings: db.getAllSettings() });
 });
 
-// Send controls
-app.post('/api/send/start', (req, res) => {
-  if (state.status === 'sending') return res.json({ ok: false, msg: 'Already sending' });
-  if (state.status !== 'ready')  return res.json({ ok: false, msg: 'WhatsApp not connected' });
-  runSend();
+// ══════════════════════════════════════════════════════════════════════════════
+// API ROUTES — CAMPAIGNS
+// ══════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/campaigns', (req, res) => {
+  res.json(db.getAllCampaigns());
+});
+
+app.post('/api/campaigns', (req, res) => {
+  try {
+    const campaign = db.createCampaign(req.body);
+    res.json(campaign);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get('/api/campaigns/:id', (req, res) => {
+  const campaign = db.getCampaign(+req.params.id);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+  res.json(campaign);
+});
+
+app.patch('/api/campaigns/:id', (req, res) => {
+  const campaign = db.updateCampaign(+req.params.id, req.body);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+  res.json(campaign);
+});
+
+app.delete('/api/campaigns/:id', (req, res) => {
+  db.deleteCampaign(+req.params.id);
   res.json({ ok: true });
 });
 
-// Manual send — N contacts immediately
-app.post('/api/send/manual', async (req, res) => {
-  if (state.status !== 'ready')   return res.json({ ok: false, msg: 'WhatsApp not connected' });
-  if (state.status === 'sending') return res.json({ ok: false, msg: 'Already sending' });
-  if (!fs.existsSync(VIDEO))      return res.json({ ok: false, msg: 'Video file not found' });
+// Get effective settings for a campaign (resolves auto vs manual)
+app.get('/api/campaigns/:id/settings', (req, res) => {
+  const settings = db.getCampaignSettings(+req.params.id);
+  if (!settings) return res.status(404).json({ error: 'Campaign not found' });
+  res.json(settings);
+});
 
-  const cfg     = loadConfig();
-  const count   = Math.min(parseInt(req.body.count) || 1, 50);
-  const toSend  = reviewContacts.filter(c => !c._sent).slice(0, count);
-  if (!toSend.length) return res.json({ ok: false, msg: 'No contacts to send to' });
+// ── Media upload for campaign ─────────────────────────────────────────────────
+app.post('/api/campaigns/:id/media', upload.single('media'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  res.json({ ok: true, sending: toSend.length });
+  const mime     = req.file.mimetype;
+  const mediaType = mime.startsWith('image/') ? 'image'
+    : mime.startsWith('video/')               ? 'video'
+    : mime === 'application/pdf'              ? 'document'
+    : null;
 
-  const videoMedia = MessageMedia.fromFilePath(VIDEO);
-  const sentPhones = new Set();
-  state.sentToday  = state.sentToday  || 0;
-  state.failedToday = state.failedToday || 0;
-
-  log(`📤 Manual send — ${toSend.length} contacts`);
-
-  for (const contact of toSend) {
-    const phone = String(contact['Phone Number']).trim();
-    if (await sendToContact(contact, videoMedia)) {
-      sentPhones.add(phone.slice(-10));
-      contact._sent = true;
-    }
-    broadcastState();
-    await sleep(randDelay(cfg.delayMinSec, cfg.delayMaxSec));
+  if (!mediaType) {
+    fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'Unsupported file type. Use image, video, or PDF.' });
   }
 
-  updateMasterSent(sentPhones);
-  log('✅ Manual send complete');
+  // Delete old media if exists
+  const existing = db.getCampaign(+req.params.id);
+  if (existing?.media_path && fs.existsSync(existing.media_path)) {
+    try { fs.unlinkSync(existing.media_path); } catch {}
+  }
+
+  const campaign = db.updateCampaign(+req.params.id, {
+    media_path:          req.file.path,
+    media_type:          mediaType,
+    media_original_name: req.file.originalname
+  });
+
+  res.json({ ok: true, campaign });
 });
 
-app.post('/api/send/pause', (req, res) => {
-  state.pauseRequested = !state.pauseRequested;
-  log(state.pauseRequested ? '⏸ Paused' : '▶️ Resumed');
-  res.json({ ok: true, paused: state.pauseRequested });
+app.delete('/api/campaigns/:id/media', (req, res) => {
+  const campaign = db.getCampaign(+req.params.id);
+  if (campaign?.media_path && fs.existsSync(campaign.media_path)) {
+    try { fs.unlinkSync(campaign.media_path); } catch {}
+  }
+  db.updateCampaign(+req.params.id, { media_path: null, media_type: null, media_original_name: null });
+  res.json({ ok: true });
 });
 
-app.post('/api/send/stop', (req, res) => {
-  state.stopRequested = true;
+// ══════════════════════════════════════════════════════════════════════════════
+// API ROUTES — CONTACTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/campaigns/:id/contacts', (req, res) => {
+  const { status, label, wa_valid, limit = 100, offset = 0 } = req.query;
+  const result = db.getCampaignContacts(+req.params.id, {
+    status:   status   || null,
+    label:    label    || null,
+    wa_valid: wa_valid !== undefined ? +wa_valid : null,
+    limit:    +limit,
+    offset:   +offset
+  });
+  res.json(result);
+});
+
+app.get('/api/campaigns/:id/labels', (req, res) => {
+  res.json(db.getCampaignLabels(+req.params.id));
+});
+
+// Import contacts from Excel/CSV
+app.post('/api/campaigns/:id/contacts/import', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  try {
+    const rows        = parseUploadedFile(req.file.path);
+    const countryCode = req.body.country_code || db.getSetting('default_country_code') || '91';
+    const result      = db.importContacts(+req.params.id, rows, req.file.originalname, countryCode);
+
+    // Clean up uploaded contacts file
+    try { fs.unlinkSync(req.file.path); } catch {}
+
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/campaigns/:id/contacts', (req, res) => {
+  db.clearContacts(+req.params.id);
+  res.json({ ok: true });
+});
+
+// Reset failed contacts back to pending
+app.post('/api/campaigns/:id/contacts/reset-failed', (req, res) => {
+  const count = db.resetFailed(+req.params.id);
+  res.json({ ok: true, reset: count });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// API ROUTES — WHATSAPP NUMBER CHECK
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Run WA check on all unchecked contacts in a campaign.
+ * This can take a while for large lists — runs in background.
+ */
+app.post('/api/campaigns/:id/contacts/wa-check', async (req, res) => {
+  if (state.whatsapp !== 'ready') {
+    return res.status(400).json({ error: 'WhatsApp not connected' });
+  }
+
+  const campaignId = +req.params.id;
+  res.json({ ok: true, msg: 'WA check started in background' });
+
+  // Run in background
+  (async () => {
+    const { contacts } = db.getCampaignContacts(campaignId, { wa_valid: null, limit: 5000 });
+    log(`🔍 WA check: ${contacts.length} contacts to check`);
+    let valid = 0; let invalid = 0;
+
+    for (const contact of contacts) {
+      const isWa = await checkWaNumber(contact.phone);
+      if (isWa !== null) {
+        db.setWaValid(campaignId, contact.phone, isWa);
+        if (isWa) valid++; else invalid++;
+      }
+      await sleep(500); // Rate limit — 2 checks per second
+    }
+
+    log(`✅ WA check complete: ${valid} valid, ${invalid} not registered`);
+    broadcast({ type: 'wa_check_complete', campaignId, valid, invalid });
+  })();
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// API ROUTES — SENDING
+// ══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/campaigns/:id/send/start', (req, res) => {
+  if (state.whatsapp !== 'ready') {
+    return res.status(400).json({ error: 'WhatsApp not connected. Scan QR code first.' });
+  }
+  if (state.sending) {
+    return res.status(400).json({ error: `Already sending campaign "${state.sending.campaignName}". Stop it first.` });
+  }
+
+  const campaign = db.getCampaign(+req.params.id);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+  if (!campaign.message_template) return res.status(400).json({ error: 'Campaign has no message template' });
+
+  const { contacts } = db.getCampaignContacts(+req.params.id, { status: 'pending', limit: 1 });
+  if (!contacts.length) return res.status(400).json({ error: 'No pending contacts in this campaign' });
+
+  res.json({ ok: true });
+  runCampaign(+req.params.id); // background
+});
+
+app.post('/api/campaigns/:id/send/pause', (req, res) => {
+  if (!state.sending || state.sending.campaignId !== +req.params.id) {
+    return res.status(400).json({ error: 'This campaign is not currently sending' });
+  }
+  state.sending.pauseRequested = !state.sending.pauseRequested;
+  const paused = state.sending.pauseRequested;
+  log(paused ? '⏸ Campaign paused' : '▶️ Campaign resumed');
+  broadcastState();
+  res.json({ ok: true, paused });
+});
+
+app.post('/api/campaigns/:id/send/stop', (req, res) => {
+  if (!state.sending || state.sending.campaignId !== +req.params.id) {
+    return res.status(400).json({ error: 'This campaign is not currently sending' });
+  }
+  state.sending.stopRequested = true;
   log('🛑 Stop requested');
+  broadcastState();
   res.json({ ok: true });
 });
 
-// Log
+// ══════════════════════════════════════════════════════════════════════════════
+// API ROUTES — HISTORY & LOGS
+// ══════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/history', (req, res) => {
+  const { limit = 200, campaign_id } = req.query;
+  res.json(db.getHistory({ limit: +limit, campaign_id: campaign_id ? +campaign_id : null }));
+});
+
 app.get('/api/log', (req, res) => {
-  if (!fs.existsSync(LOG)) return res.json({ lines: [] });
+  if (!fs.existsSync(LOG_FILE)) return res.json({ lines: [] });
   try {
-    const lines = fs.readFileSync(LOG, 'utf8').trim().split('\n').slice(-200).reverse();
+    const lines = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n').slice(-200).reverse();
     res.json({ lines });
   } catch { res.json({ lines: [] }); }
-});
-
-// History
-app.get('/api/history', (req, res) => {
-  if (!fs.existsSync(HISTORY)) return res.json([]);
-  try { res.json(JSON.parse(fs.readFileSync(HISTORY))); } catch { res.json([]); }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -523,6 +663,7 @@ app.get('/api/history', (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 wss.on('connection', (ws) => {
+  // Send current state immediately on connect
   ws.send(JSON.stringify({ type: 'state', data: { ...state, qrDataUrl: undefined } }));
   if (state.qrDataUrl) ws.send(JSON.stringify({ type: 'qr', dataUrl: state.qrDataUrl }));
 });
@@ -531,25 +672,18 @@ wss.on('connection', (ws) => {
 // START — with port conflict protection
 // ══════════════════════════════════════════════════════════════════════════════
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3004;
 
-// Kill anything holding this port before we try to bind
+// Kill anything on this port before starting
 try {
   execSync(`lsof -ti :${PORT} | xargs kill -9 2>/dev/null || true`, { stdio: 'ignore' });
-  // Give OS time to release the port
-  const waitStart = Date.now();
-  while (Date.now() - waitStart < 1500) { /* sync wait 1.5s */ }
 } catch {}
 
-// Error handler — if port still in use, kill and retry once
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} still in use — retrying in 3 seconds...`);
+    console.error(`❌ Port ${PORT} in use — retrying in 3s...`);
     try { execSync(`lsof -ti :${PORT} | xargs kill -9 2>/dev/null || true`, { stdio: 'ignore' }); } catch {}
-    setTimeout(() => {
-      server.close();
-      server.listen(PORT, onListening);
-    }, 3000);
+    setTimeout(() => server.listen(PORT, onListening), 3000);
   } else {
     console.error('Server error:', err);
     process.exit(1);
@@ -557,14 +691,17 @@ server.on('error', (err) => {
 });
 
 function onListening() {
-  console.log(`\n✅ Anugnya WhatsApp Sender running`);
-  console.log(`   Open: http://localhost:${PORT}\n`);
-  loadReviewFromFile();
-  // Auto-init WhatsApp on startup if session exists
-  const sessionExists = fs.existsSync(path.join(SESSION, 'session'));
+  console.log(`\n✅ WhatsApp Sender v3 running`);
+  console.log(`   Dashboard: http://localhost:${PORT}`);
+  console.log(`   Port: ${PORT}\n`);
+
+  db.init();
+
+  // Auto-reconnect if session exists
+  const sessionExists = fs.existsSync(path.join(SESSION_DIR, 'Default'));
   if (sessionExists) {
     log('🔄 Existing session found — reconnecting WhatsApp...');
-    initWhatsApp();
+    setTimeout(initWhatsApp, 2000);
   }
 }
 

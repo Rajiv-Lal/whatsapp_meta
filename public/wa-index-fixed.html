@@ -481,35 +481,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <option value="1">Media first, then text</option>
         </select>
       </div>
-
-      <div class="divider"></div>
-
-      <!-- Contacts file -->
-      <div class="form-group">
-        <label class="form-label">Contacts File <span style="color:var(--muted);font-weight:400;text-transform:none">(Excel or CSV — can also import after saving)</span></label>
-        <div class="upload-zone" id="campContactsZone" onclick="document.getElementById('campContactsFile').click()">
-          <div class="upload-icon">📋</div>
-          <div class="upload-text" id="campContactsFileName">Click to select Excel or CSV file</div>
-        </div>
-        <input type="file" id="campContactsFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="onCampContactsSelected()">
-        <div class="form-row" style="margin-top:8px">
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Country Code <span style="color:var(--muted);font-weight:400;text-transform:none">(leave blank for Settings default)</span></label>
-            <input class="form-control" id="campContactsCountry" placeholder="e.g. 91, 1, 60">
-          </div>
-        </div>
-      </div>
-
-      <!-- Media file -->
-      <div class="form-group">
-        <label class="form-label">Media File <span style="color:var(--muted);font-weight:400;text-transform:none">(image, video, or PDF — optional)</span></label>
-        <div class="upload-zone" id="campMediaZone" onclick="document.getElementById('campMediaFileInput').click()">
-          <div class="upload-icon">📎</div>
-          <div class="upload-text" id="campMediaFileName">Click to select image, video, or PDF</div>
-        </div>
-        <input type="file" id="campMediaFileInput" accept="image/*,video/*,.pdf" style="display:none" onchange="onCampMediaSelected()">
-      </div>
-
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalCampaign')">Cancel</button>
@@ -883,22 +854,6 @@ async function filterLabel(campaignId, label) {
 }
 
 // ── Campaign CRUD ──────────────────────────────────────────────────────────
-function onCampContactsSelected() {
-  const file = document.getElementById('campContactsFile').files[0];
-  if (file) {
-    document.getElementById('campContactsFileName').textContent = file.name;
-    document.getElementById('campContactsZone').classList.add('has-file');
-  }
-}
-
-function onCampMediaSelected() {
-  const file = document.getElementById('campMediaFileInput').files[0];
-  if (file) {
-    document.getElementById('campMediaFileName').textContent = file.name;
-    document.getElementById('campMediaZone').classList.add('has-file');
-  }
-}
-
 function openCampaignModal(data = null) {
   document.getElementById('campId').value         = data?.id || '';
   document.getElementById('campModalTitle').textContent = data ? 'Edit Campaign' : 'New Campaign';
@@ -908,13 +863,6 @@ function openCampaignModal(data = null) {
   document.getElementById('campMessage').value     = data?.message_template  || '';
   document.getElementById('campSignature').value   = data?.signature         || '';
   document.getElementById('campMediaFirst').value  = data?.media_first       ? '1' : '0';
-  // Reset file fields
-  document.getElementById('campContactsFile').value = '';
-  document.getElementById('campContactsFileName').textContent = 'Click to select Excel or CSV file';
-  document.getElementById('campContactsZone').classList.remove('has-file');
-  document.getElementById('campMediaFileInput').value = '';
-  document.getElementById('campMediaFileName').textContent = 'Click to select image, video, or PDF';
-  document.getElementById('campMediaZone').classList.remove('has-file');
   document.getElementById('campBatch').value       = data?.batch_size        || 10;
   document.getElementById('campInterval').value    = data?.batch_interval_min|| 120;
   document.getElementById('campDaily').value       = data?.daily_limit       || 50;
@@ -951,40 +899,11 @@ async function saveCampaign() {
   };
   if (!data.name) { toast('Campaign name required', 'err'); return; }
   try {
-    let campaign;
-    if (id) campaign = await api(`/campaigns/${id}`, 'PATCH', data);
-    else    campaign = await api('/campaigns', 'POST', data);
-
-    const campId = campaign.id;
-
-    // Upload contacts file if selected
-    const contactsFile = document.getElementById('campContactsFile').files[0];
-    if (contactsFile) {
-      const fd = new FormData();
-      fd.append('file', contactsFile);
-      const country = document.getElementById('campContactsCountry').value.trim();
-      if (country) fd.append('country_code', country);
-      try {
-        const r = await apiForm(`/campaigns/${campId}/contacts/import`, fd);
-        toast(`Contacts imported: ${r.imported} added, ${r.duplicates} duplicates, ${r.invalid} invalid`, 'ok');
-      } catch(e) { toast('Contacts import failed: ' + e.message, 'err'); }
-    }
-
-    // Upload media file if selected
-    const mediaFile = document.getElementById('campMediaFileInput').files[0];
-    if (mediaFile) {
-      const fd = new FormData();
-      fd.append('media', mediaFile);
-      try {
-        await apiForm(`/campaigns/${campId}/media`, fd);
-        toast('Media uploaded', 'ok');
-      } catch(e) { toast('Media upload failed: ' + e.message, 'err'); }
-    }
-
+    if (id) await api(`/campaigns/${id}`, 'PATCH', data);
+    else    await api('/campaigns', 'POST', data);
     closeModal('modalCampaign');
     await loadDashboard();
     toast(id ? 'Campaign updated' : 'Campaign created', 'ok');
-    if (campId) openCampaign(campId);
   } catch(e) { toast(e.message, 'err'); }
 }
 
