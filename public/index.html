@@ -832,14 +832,19 @@ async function openCampaign(id) {
     document.getElementById('campaignDetail').innerHTML = `
       <div style="display:flex;flex-direction:column;gap:16px">
 
+        <!-- Campaign action bar — prominent Edit and Delete -->
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:11px;color:var(--muted)">Campaign · <span style="color:var(--text);font-weight:600">${esc(c.name)}</span></div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" onclick="editCampaign(${c.id})" style="font-size:13px;padding:7px 16px">✏️ Edit Campaign</button>
+            <button class="btn btn-danger" onclick="deleteCampaign(${c.id})" style="font-size:13px;padding:7px 16px">🗑 Delete Campaign</button>
+          </div>
+        </div>
+
         <!-- Stats panel — full width -->
         <div class="panel">
           <div class="panel-header">
             <span class="panel-title">Campaign Stats</span>
-            <div class="btn-row">
-              <button class="btn btn-ghost btn-sm" onclick="editCampaign(${c.id})">Edit</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteCampaign(${c.id})">Delete</button>
-            </div>
           </div>
           <div class="panel-body">
             <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:12px">
@@ -972,7 +977,8 @@ async function openCampaign(id) {
             <div class="panel-body">
               ${c.salutation ? `<div style="font-size:11px;color:var(--muted)">Salutation</div><div style="font-size:12px;margin-bottom:8px">${esc(c.salutation)} {first_name},</div>` : ''}
               <div style="background:var(--surface2);border-radius:var(--radius);padding:10px;font-size:12px;line-height:1.7;white-space:pre-wrap;margin-bottom:8px">${esc(c.message_template||'No message set')}</div>
-              ${c.signature ? `<div style="font-size:11px;color:var(--muted)">Signature: ${esc(c.signature)}</div>` : ''}
+              ${c.signature ? `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Signature: ${esc(c.signature)}</div>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="editCampaign(${c.id})" style="margin-top:4px">✏️ Edit Message</button>
             </div>
           </div>
 

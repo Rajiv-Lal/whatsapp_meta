@@ -87,6 +87,7 @@ cat > "$PLIST" << PLIST_EOF
     <key>ProgramArguments</key>
     <array>
         <string>${NODE_PATH}</string>
+        <string>--max-old-space-size=4096</string>
         <string>${SCRIPT_DIR}/server.js</string>
     </array>
 
