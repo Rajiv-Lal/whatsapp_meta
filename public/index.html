@@ -200,6 +200,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .toast.err{border-color:rgba(248,81,73,.4);color:var(--red)}
 @keyframes slideUp{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
 
+/* ── Inline edit ─────────────────────────────────────────────────────────── */
+.inline-edit{background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 6px;font-size:12px;font-family:var(--font);color:var(--text);width:100%;min-width:80px}
+.inline-edit:hover{border-color:var(--border)}
+.inline-edit:focus{outline:none;border-color:var(--wa);background:var(--surface2);box-shadow:0 0 0 2px rgba(37,211,102,.1)}
+
 /* ── Misc ────────────────────────────────────────────────────────────────── */
 .divider{height:1px;background:var(--border);margin:16px 0}
 .text-muted{color:var(--muted)}
@@ -573,6 +578,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 <div class="toasts" id="toasts"></div>
 
+
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let ws        = null;
@@ -615,6 +621,7 @@ function connectWS() {
       if (msg.type === 'qr')               showQR(msg.dataUrl);
       if (msg.type === 'log')              appendLogLine(msg);
       if (msg.type === 'wa_check_complete') toast(`✅ WA check done: ${msg.valid} valid, ${msg.invalid} not on WA`, 'ok');
+      if (msg.type === 'manual_send_complete') { toast(`Manual send done: ${msg.sent} sent, ${msg.failed} failed`, 'ok'); if (activeCampaignId) openCampaign(activeCampaignId); }
     } catch {}
   };
 
@@ -663,6 +670,58 @@ function handleState(s) {
     livePanel.classList.remove('visible');
     document.getElementById('sendingPill').style.display = 'none';
   }
+
+  // Update campaign detail page if open
+  updateCampaignDetailState(s);
+}
+
+function updateCampaignDetailState(s) {
+  // Only act if campaign detail page is active
+  if (!document.getElementById('page-campaign').classList.contains('active')) return;
+  if (!activeCampaignId) return;
+
+  const isSending = s.sending && s.sending.campaignId === activeCampaignId;
+  const wasSending = !isSending && appState._wasSending;
+
+  // Update Start/Pause/Stop buttons in queue panel
+  const sendBtnArea = document.getElementById('campaignSendBtns');
+  if (sendBtnArea) {
+    if (isSending) {
+      sendBtnArea.innerHTML = `
+        <button class="btn btn-yellow btn-sm" onclick="pauseCampaign()">⏸ Pause</button>
+        <button class="btn btn-danger btn-sm" onclick="stopCampaign()">⏹ Stop</button>`;
+    } else {
+      sendBtnArea.innerHTML = `
+        <button class="btn btn-primary btn-sm" onclick="startCampaign(${activeCampaignId})">▶ Start Sending</button>`;
+    }
+  }
+
+  // Update inline progress in campaign detail
+  const detailProgress = document.getElementById('campaignDetailProgress');
+  if (detailProgress && s.sending && s.sending.campaignId === activeCampaignId) {
+    const pct = s.sending.total > 0
+      ? Math.round(((s.sending.sent + s.sending.failed + s.sending.noweb) / s.sending.total) * 100)
+      : 0;
+    detailProgress.innerHTML = `
+      <div style="margin-top:10px;padding:10px;background:rgba(37,211,102,.06);border:1px solid rgba(37,211,102,.2);border-radius:6px">
+        <div style="display:flex;gap:16px;margin-bottom:8px;font-size:12px">
+          <span>Sent: <strong style="color:var(--wa)">${s.sending.sent}</strong></span>
+          <span>Failed: <strong style="color:var(--red)">${s.sending.failed}</strong></span>
+          <span>Not on WA: <strong style="color:var(--yellow)">${s.sending.noweb}</strong></span>
+          <span>Batch: <strong>${s.sending.currentBatch}/${s.sending.totalBatches}</strong></span>
+        </div>
+        <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%"></div></div>
+        ${s.sending.nextBatchAt ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">⏳ Next batch at ${new Date(s.sending.nextBatchAt).toLocaleTimeString('en-IN')}</div>` : ''}
+      </div>`;
+  } else if (detailProgress) {
+    detailProgress.innerHTML = '';
+  }
+
+  // If sending just finished — reload campaign to refresh stats
+  if (wasSending && !isSending) {
+    openCampaign(activeCampaignId);
+  }
+  appState._wasSending = isSending;
 }
 
 function showQR(dataUrl) {
@@ -751,54 +810,132 @@ async function openCampaign(id) {
     const c        = await api(`/campaigns/${id}`);
     const settings = await api(`/campaigns/${id}/settings`);
     const labels   = await api(`/campaigns/${id}/labels`);
-    const { contacts, total } = await api(`/campaigns/${id}/contacts?limit=50`);
+    const queue = await api(`/campaigns/${id}/queue`);
+    // Show queue in send order when contacts are queued, otherwise show pending pool
+    const contactsUrl = queue.length > 0
+      ? `/campaigns/${id}/contacts?status=queued&limit=50`
+      : `/campaigns/${id}/contacts?exclude_sent=1&limit=50`;
+    const { contacts, total } = await api(contactsUrl);
 
     document.getElementById('pageTitle').textContent = c.name;
+
+    // Update queue stats if elements exist
+    const queueEl   = document.getElementById('queueCount');
+    const pendingEl = document.getElementById('pendingCount');
+    const skippedEl = document.getElementById('skippedCount');
+    if (queueEl)   queueEl.textContent   = (queue?.length || 0) + ' queued';
+    if (pendingEl) pendingEl.textContent  = (c.stats?.pending || 0);
+    if (skippedEl) skippedEl.textContent  = (c.stats?.skipped || 0);
 
     const isSending = appState.sending?.campaignId === id;
 
     document.getElementById('campaignDetail').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:16px">
 
-        <!-- Left: Contacts + Stats -->
-        <div>
-          <div class="panel mb-12">
-            <div class="panel-header">
-              <span class="panel-title">Campaign Stats</span>
-              <div class="btn-row">
-                <button class="btn btn-ghost btn-sm" onclick="editCampaign(${c.id})">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteCampaign(${c.id})">Delete</button>
-              </div>
+        <!-- Stats panel — full width -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Campaign Stats</span>
+            <div class="btn-row">
+              <button class="btn btn-ghost btn-sm" onclick="editCampaign(${c.id})">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteCampaign(${c.id})">Delete</button>
             </div>
-            <div class="panel-body">
-              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px">
-                ${statChip('Total',    c.stats?.total   ||0, '')}
-                ${statChip('Pending',  c.stats?.pending ||0, '')}
-                ${statChip('Sent',     c.stats?.sent    ||0, 'green')}
-                ${statChip('Failed',   c.stats?.failed  ||0, 'red')}
-                ${statChip('Not on WA',c.stats?.noweb   ||0, 'yellow')}
-              </div>
+          </div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:12px">
+              ${statChip('Total',    c.stats?.total   ||0, '')}
+              ${statChip('Pending',  c.stats?.pending ||0, '')}
+              ${statChip('Queued',   queue?.length    ||0, 'blue')}
+              ${statChip('Sent',     c.stats?.sent    ||0, 'green')}
+              ${statChip('Failed',   c.stats?.failed  ||0, 'red')}
+              ${statChip('Not on WA',c.stats?.noweb   ||0, 'yellow')}
+              ${statChip('Skipped',  c.stats?.skipped ||0, '')}
+            </div>
               <div class="progress-wrap"><div class="progress-fill" style="width:${pct(c.stats?.sent, c.stats?.total)}%"></div></div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
-                <div style="font-size:11px;color:var(--muted)">
-                  Mode: <strong style="color:${c.auto_mode?'var(--wa)':'var(--text)'}">${c.auto_mode?'Auto':'Manual'}</strong>
-                  &nbsp;·&nbsp; Batch: <strong>${settings.batch_size}</strong>
-                  &nbsp;·&nbsp; Delay: <strong>${settings.delay_min}–${settings.delay_max}s</strong>
-                  &nbsp;·&nbsp; Interval: <strong>${settings.batch_interval_min}m</strong>
-                  &nbsp;·&nbsp; Daily: <strong>${settings.daily_limit}</strong>
-                  &nbsp;·&nbsp; WA Check: <strong>${settings.wa_check_enabled?'Yes':'No'}</strong>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:11px;color:var(--muted)">Mode:</span>
+                  <select id="campModeInline" class="form-control" style="width:90px;padding:2px 4px;height:22px;font-size:11px" onchange="savePaceInline(${c.id})">
+                    <option value="1" ${c.auto_mode?'selected':''}>Auto</option>
+                    <option value="0" ${!c.auto_mode?'selected':''}>Manual</option>
+                  </select>
+                  <span style="font-size:11px;color:var(--muted)">Batch:</span>
+                  <input type="number" id="campBatchInline" class="form-control" value="${settings.batch_size}" min="1" max="200" style="width:55px;padding:2px 4px;height:22px;font-size:11px" onchange="savePaceInline(${c.id})">
+                  <span style="font-size:11px;color:var(--muted)">Delay:</span>
+                  <input type="number" id="campDelayMinInline" class="form-control" value="${settings.delay_min}" min="5" style="width:45px;padding:2px 4px;height:22px;font-size:11px" onchange="savePaceInline(${c.id})">
+                  <span style="font-size:11px;color:var(--muted)">–</span>
+                  <input type="number" id="campDelayMaxInline" class="form-control" value="${settings.delay_max}" min="5" style="width:45px;padding:2px 4px;height:22px;font-size:11px" onchange="savePaceInline(${c.id})">
+                  <span style="font-size:11px;color:var(--muted)">s &nbsp; Interval:</span>
+                  <input type="number" id="campIntervalInline" class="form-control" value="${settings.batch_interval_min}" min="1" style="width:50px;padding:2px 4px;height:22px;font-size:11px" onchange="savePaceInline(${c.id})">
+                  <span style="font-size:11px;color:var(--muted)">m &nbsp; Daily:</span>
+                  <input type="number" id="campDailyInline" class="form-control" value="${settings.daily_limit}" min="1" style="width:50px;padding:2px 4px;height:22px;font-size:11px" onchange="savePaceInline(${c.id})">
                 </div>
                 <div class="btn-row">
-                  ${!isSending ? `<button class="btn btn-primary btn-sm" onclick="startCampaign(${c.id})">▶ Start Sending</button>` : `<button class="btn btn-yellow btn-sm" onclick="pauseCampaign()">⏸ Pause</button><button class="btn btn-danger btn-sm" onclick="stopCampaign()">⏹ Stop</button>`}
                   <button class="btn btn-ghost btn-sm" onclick="runWaCheck(${c.id})">🔍 WA Check</button>
                   <button class="btn btn-ghost btn-sm" onclick="resetFailed(${c.id})">↩ Retry Failed</button>
                 </div>
               </div>
+          </div>
+        </div>
+
+        <!-- Queue workflow panel — full width -->
+          <div class="panel mb-12" style="border-color:rgba(37,211,102,.3)">
+            <div class="panel-header">
+              <span class="panel-title">📋 Today's Review Queue</span>
+              <div class="btn-row">
+                <button class="btn btn-ghost btn-sm" onclick="showPickPanel(${c.id})">📋 Pick</button>
+                <button class="btn btn-ghost btn-sm" onclick="replenishQueue(${c.id})">➕ Replenish</button>
+                <button class="btn btn-ghost btn-sm" onclick="clearQueue(${c.id})">🗑 Clear</button>
+              </div>
+            </div>
+            <div class="panel-body" style="padding:12px 16px">
+              <!-- Pick inline panel -->
+              <div id="pickPanel" style="display:none;background:rgba(37,211,102,.06);border:1px solid rgba(37,211,102,.2);border-radius:6px;padding:12px;margin-bottom:12px">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-size:12px;font-weight:600">Pick how many contacts?</span>
+                  <input type="number" id="pickCount" class="form-control" value="${settings.batch_size}" min="1" max="500" style="width:80px">
+                  <button class="btn btn-primary btn-sm" onclick="confirmPick(${c.id})">Pick</button>
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pickPanel').style.display='none'">Cancel</button>
+                </div>
+              </div>
+              <!-- Manual send inline panel -->
+              <div id="manualPanel" style="display:none;background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:12px;margin-bottom:12px">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-size:12px;font-weight:600">Send how many now?</span>
+                  <input type="number" id="manualCount" class="form-control" value="${settings.batch_size}" min="1" max="100" style="width:80px">
+                  <button class="btn btn-primary btn-sm" onclick="confirmManualSend(${c.id})">Send Now</button>
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('manualPanel').style.display='none'">Cancel</button>
+                </div>
+              </div>
+              <!-- Queue stats + send controls -->
+              <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+                <span id="queueCount" style="font-size:13px;font-weight:600;color:var(--wa)">— queued</span>
+                <span style="font-size:11px;color:var(--muted)">Pending: <strong id="pendingCount">—</strong></span>
+                <span style="font-size:11px;color:var(--muted)">Skipped: <strong id="skippedCount">—</strong></span>
+              </div>
+              <!-- Two send buttons — always visible -->
+              <div id="campaignSendBtns" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                ${!isSending ? `
+                  <div style="display:flex;align-items:center;gap:6px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);border-radius:6px;padding:6px 10px">
+                    <span style="font-size:11px;font-weight:600;color:var(--blue)">⚡ Send Now:</span>
+                    <input type="number" id="manualCount" class="form-control" value="${settings.batch_size}" min="1" max="100" style="width:60px;padding:3px 6px;height:24px">
+                    <button class="btn btn-sm" style="background:var(--blue);color:#fff;padding:3px 10px" onclick="confirmManualSend(${c.id})">Send</button>
+                    <span style="font-size:10px;color:var(--muted)">contacts now, no wait</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.25);border-radius:6px;padding:6px 10px">
+                    <button class="btn btn-primary btn-sm" onclick="startCampaign(${c.id})">▶ Auto Send</button>
+                    <span style="font-size:10px;color:var(--muted)">batches · ${settings.batch_interval_min}min intervals · ${settings.daily_limit}/day</span>
+                  </div>` : `
+                  <button class="btn btn-yellow btn-sm" onclick="pauseCampaign()">⏸ Pause</button>
+                  <button class="btn btn-danger btn-sm" onclick="stopCampaign()">⏹ Stop</button>
+                  <span style="font-size:11px;color:var(--muted)">${appState.sending?.sent||0} sent · ${appState.sending?.failed||0} failed</span>`}
+              </div>
+              <div id="campaignDetailProgress"></div>
             </div>
           </div>
 
-          <!-- Contacts table -->
-          <div class="panel">
+        <!-- Contacts table — full width -->
+        <div class="panel">
             <div class="panel-header">
               <span class="panel-title">Contacts (${total})</span>
               <div class="btn-row">
@@ -807,19 +944,30 @@ async function openCampaign(id) {
                 <button class="btn btn-danger btn-sm" onclick="clearContacts(${c.id})">Clear All</button>
               </div>
             </div>
+            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px">
+              <input class="form-control" id="contactSearchInline" placeholder="Search name or phone..." oninput="searchContacts(${c.id})" style="max-width:280px">
+              <select class="form-control" id="statusFilter" onchange="searchContacts(${c.id})" style="width:130px">
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="queued">Queued</option>
+                <option value="sent">Sent</option>
+                <option value="failed">Failed</option>
+                <option value="skipped">Skipped</option>
+                <option value="noweb">Not on WA</option>
+              </select>
+            </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Name</th><th>Phone</th><th>Label</th><th>WA</th><th>Status</th></tr></thead>
+                <thead><tr><th>First Name</th><th>Last Name</th><th>Phone</th><th>Label</th><th>WA</th><th>Status</th><th></th></tr></thead>
                 <tbody>${contacts.length ? contacts.map(renderContactRow).join('') : `<tr><td colspan="5" class="empty" style="text-align:center;padding:24px">No contacts yet. Import a file to begin.</td></tr>`}</tbody>
               </table>
             </div>
             ${total > 50 ? `<div style="padding:10px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)">Showing 50 of ${total} — use filters to narrow</div>` : ''}
-          </div>
         </div>
 
-        <!-- Right: Message + Media -->
-        <div>
-          <div class="panel mb-12">
+        <!-- Message + Media — side by side below contacts -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="panel">
             <div class="panel-header"><span class="panel-title">Message</span></div>
             <div class="panel-body">
               ${c.salutation ? `<div style="font-size:11px;color:var(--muted)">Salutation</div><div style="font-size:12px;margin-bottom:8px">${esc(c.salutation)} {first_name},</div>` : ''}
@@ -854,11 +1002,32 @@ async function openCampaign(id) {
 function renderContactRow(c) {
   const waIcon = c.wa_valid === 1 ? '✅' : c.wa_valid === 0 ? '❌' : '—';
   return `<tr>
-    <td>${esc(c.name||c.first_name||'—')}</td>
+    <td>
+      <input
+        class="inline-edit"
+        value="${esc(c.first_name||'')}"
+        onblur="saveInlineContact(${c.id}, 'first_name', this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"
+      >
+    </td>
+    <td>
+      <input
+        class="inline-edit"
+        value="${esc(c.last_name||'')}"
+        onblur="saveInlineContact(${c.id}, 'last_name', this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"
+      >
+    </td>
     <td class="mono">${c.phone}</td>
     <td>${c.label ? `<span class="tag tag-pending">${esc(c.label)}</span>` : '—'}</td>
     <td style="font-size:12px">${waIcon}</td>
     <td><span class="tag tag-${c.status}">${c.status}</span></td>
+    <td>
+      <div class="btn-row">
+        ${c.status !== 'skipped' ? `<button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px;color:var(--yellow)" onclick="skipContactRow(${c.id},event)" title="Skip — do not contact in this campaign">Skip</button>` : ''}
+        <button class="btn btn-danger btn-sm" style="padding:2px 7px;font-size:11px" onclick="deleteContact(${c.id},event)" title="Delete permanently">×</button>
+      </div>
+    </td>
   </tr>`;
 }
 
@@ -1002,6 +1171,27 @@ async function deleteCampaign(id) {
     showPage('dashboard', document.querySelector('.nav-item'));
     toast('Campaign deleted');
   } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Inline pace settings save ─────────────────────────────────────────────────
+async function savePaceInline(id) {
+  const autoMode  = +document.getElementById('campModeInline').value;
+  const batchSize = +document.getElementById('campBatchInline').value;
+  const delayMin  = +document.getElementById('campDelayMinInline').value;
+  const delayMax  = +document.getElementById('campDelayMaxInline').value;
+  const interval  = +document.getElementById('campIntervalInline').value;
+  const daily     = +document.getElementById('campDailyInline').value;
+  try {
+    await api(`/campaigns/${id}`, 'PATCH', {
+      auto_mode:          autoMode,
+      batch_size:         autoMode ? null : batchSize,
+      delay_min:          autoMode ? null : delayMin,
+      delay_max:          autoMode ? null : delayMax,
+      batch_interval_min: autoMode ? null : interval,
+      daily_limit:        autoMode ? null : daily
+    });
+    toast('Settings saved', 'ok');
+  } catch(e) { toast('Save failed: ' + e.message, 'err'); }
 }
 
 // ── Sending ────────────────────────────────────────────────────────────────
@@ -1188,6 +1378,104 @@ async function saveSettings() {
   } catch(e) { toast(e.message, 'err'); }
 }
 
+// ── Queue workflow ────────────────────────────────────────────────────────────
+
+function showPickPanel(id) {
+  document.getElementById('pickPanel').style.display = '';
+  document.getElementById('manualPanel').style.display = 'none';
+}
+
+// manualSend panel removed — replaced by inline Send Now button
+
+async function confirmPick(id) {
+  const count = +document.getElementById('pickCount').value || 50;
+  document.getElementById('pickPanel').style.display = 'none';
+  try {
+    const r = await api(`/campaigns/${id}/pick`, 'POST', { count });
+    toast(`Picked ${r.picked} contacts — ${r.totalQueued} total queued`, 'ok');
+    document.getElementById('queueCount').textContent = r.totalQueued + ' queued';
+    openCampaign(id);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function replenishQueue(id) {
+  const target = prompt('Replenish queue to how many contacts?', '50');
+  if (!target) return;
+  try {
+    const r = await api(`/campaigns/${id}/replenish`, 'POST', { count: +target });
+    toast(`Added ${r.added} contacts — ${r.totalQueued} total queued`, 'ok');
+    openCampaign(id);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function clearQueue(id) {
+  if (!confirm('Move all queued contacts back to pending?')) return;
+  try {
+    const r = await api(`/campaigns/${id}/queue/clear`, 'POST');
+    toast(`${r.cleared} contacts moved back to pending`);
+    openCampaign(id);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function confirmManualSend(id) {
+  const count = +document.getElementById('manualCount').value || 10;
+  document.getElementById('manualPanel').style.display = 'none';
+  try {
+    const r = await api(`/campaigns/${id}/send/manual`, 'POST', { count });
+    toast(`Sending ${r.sending} contacts now...`, 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function skipContactRow(id, e) {
+  e.stopPropagation();
+  try {
+    await api(`/contacts/${id}/skip`, 'POST');
+    const row = e.target.closest('tr');
+    if (row) {
+      // Update status tag in row instead of removing
+      const statusCell = row.querySelector('.tag');
+      if (statusCell) { statusCell.className = 'tag tag-skipped'; statusCell.textContent = 'skipped'; }
+      // Remove skip button
+      e.target.closest('button').remove();
+    }
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Search contacts ────────────────────────────────────────────────────────────
+async function searchContacts(id) {
+  const q      = document.getElementById('contactSearchInline')?.value || '';
+  const status = document.getElementById('statusFilter')?.value || '';
+  try {
+    const params = new URLSearchParams({ limit: 50 });
+    if (q)      params.append('search', q);
+    if (status) params.append('status', status);
+    else        params.append('exclude_sent', '1');
+    const { contacts, total } = await api(`/campaigns/${id}/contacts?${params}`);
+    document.querySelector('#campaignDetail tbody').innerHTML =
+      contacts.length
+        ? contacts.map(renderContactRow).join('')
+        : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">No contacts found</td></tr>';
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Inline contact edit ───────────────────────────────────────────────────────
+async function saveInlineContact(id, field, value) {
+  try {
+    await api(`/contacts/${id}`, 'PATCH', { [field]: value.trim() });
+  } catch(e) { toast('Save failed: ' + e.message, 'err'); }
+}
+
+async function deleteContact(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this contact from the campaign?')) return;
+  try {
+    await api(`/contacts/${id}`, 'DELETE');
+    // Remove row from DOM immediately
+    const row = e.target.closest('tr');
+    if (row) row.remove();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
 // ── Modal helpers ──────────────────────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1199,7 +1487,7 @@ document.querySelectorAll('.overlay').forEach(o => {
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(dt) {
   if (!dt) return '—';
-  return new Date(dt).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  return new Date(dt).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', second:'2-digit' });
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────

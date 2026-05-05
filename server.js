@@ -144,6 +144,14 @@ function parseUploadedFile(filePath) {
 function initWhatsApp() {
   if (waClient) { log('⚠️ WhatsApp client already exists'); return; }
 
+  // Clear browser lock files that prevent restart
+  const lockFiles = ['SingletonLock','SingletonSocket','SingletonCookie'];
+  const sessionPath = path.join(SESSION_DIR, 'session');
+  lockFiles.forEach(f => {
+    const p = path.join(sessionPath, f);
+    if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} }
+  });
+
   log('🔄 Initialising WhatsApp...');
   state.whatsapp  = 'connecting';
   state.qrDataUrl = null;
@@ -232,7 +240,20 @@ async function sendMessage(phone, message, mediaPath = null, mediaFirst = false)
 
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message };
+    const errText = err.message || String(err) || 'Send failed';
+    console.error('[sendMessage] Error for', phone, '—', errText, '| raw:', JSON.stringify(err));
+
+    // Detached frame = Chrome page died — force reconnect
+    if (errText.includes('detached Frame') || errText.includes('Execution context was destroyed')) {
+      log('⚠️ Detached frame detected — reconnecting WhatsApp...', 'error');
+      state.whatsapp = 'disconnected';
+      broadcastState();
+      try { await waClient.destroy(); } catch {}
+      waClient = null;
+      setTimeout(initWhatsApp, 3000);
+    }
+
+    return { success: false, error: errText };
   }
 }
 
@@ -257,14 +278,15 @@ async function runCampaign(campaignId) {
 
   const settings  = db.getCampaignSettings(campaignId);
   const daily     = settings.daily_limit;
-  const mediaFirst = settings.media_first || !!campaign.media_first;
+  const mediaFirst = parseInt(settings.media_first) === 1 || parseInt(campaign.media_first) === 1;
   const mediaPath  = campaign.media_path || null;
 
-  // Get pending contacts up to daily limit
-  const contacts = db.getPendingContacts(campaignId, daily);
+  // Get queued contacts (picked for today's review)
+  const contacts = db.getQueuedContacts(campaignId);
   if (!contacts.length) {
-    log(`⚠️ No pending contacts in campaign "${campaign.name}"`);
-    db.updateCampaign(campaignId, { status: 'completed' });
+    log(`⚠️ No queued contacts in campaign "${campaign.name}". Use Pick Contacts to build today's list.`);
+    state.sending = null;
+    broadcastState();
     return;
   }
 
@@ -329,6 +351,13 @@ async function runCampaign(campaignId) {
           broadcastState();
           continue;
         }
+      }
+
+      // Stop immediately if WhatsApp disconnected mid-send
+      if (state.whatsapp !== 'ready') {
+        log('⚠️ WhatsApp disconnected during send — stopping campaign', 'error');
+        state.sending.stopRequested = true;
+        break;
       }
 
       // Build and send message
@@ -516,13 +545,15 @@ app.delete('/api/campaigns/:id/media', (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 app.get('/api/campaigns/:id/contacts', (req, res) => {
-  const { status, label, wa_valid, limit = 100, offset = 0 } = req.query;
+  const { status, label, wa_valid, limit = 100, offset = 0, exclude_sent, search } = req.query;
   const result = db.getCampaignContacts(+req.params.id, {
-    status:   status   || null,
-    label:    label    || null,
-    wa_valid: wa_valid !== undefined ? +wa_valid : null,
-    limit:    +limit,
-    offset:   +offset
+    status:       status       || null,
+    label:        label        || null,
+    wa_valid:     wa_valid !== undefined ? +wa_valid : null,
+    exclude_sent: exclude_sent === '1',
+    search:       search       || null,
+    limit:        +limit,
+    offset:       +offset
   });
   res.json(result);
 });
@@ -555,10 +586,123 @@ app.delete('/api/campaigns/:id/contacts', (req, res) => {
   res.json({ ok: true });
 });
 
+// Delete individual contact
+app.delete('/api/contacts/:id', (req, res) => {
+  try {
+    db.getDb().prepare('DELETE FROM campaign_contacts WHERE id = ?').run(+req.params.id);
+    res.json({ ok: true });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+// Edit individual contact name
+app.patch('/api/contacts/:id', (req, res) => {
+  const { first_name, last_name, name } = req.body;
+  try {
+    db.getDb().prepare(`
+      UPDATE campaign_contacts
+      SET first_name = ?, last_name = ?, name = ?
+      WHERE id = ?
+    `).run(first_name || null, last_name || null, name || null, +req.params.id);
+    res.json({ ok: true });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
 // Reset failed contacts back to pending
 app.post('/api/campaigns/:id/contacts/reset-failed', (req, res) => {
   const count = db.resetFailed(+req.params.id);
   res.json({ ok: true, reset: count });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// API ROUTES — QUEUE (PICK / REVIEW WORKFLOW)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Pick N contacts from pending → queued
+app.post('/api/campaigns/:id/pick', (req, res) => {
+  if (!req.body.count) return res.status(400).json({ error: 'count required' });
+  const picked = db.pickContactsForReview(+req.params.id, +req.body.count);
+  const queued = db.getQueuedContacts(+req.params.id);
+  log(`📋 Picked ${picked} contacts for review (${queued.length} total queued)`);
+  res.json({ ok: true, picked, totalQueued: queued.length });
+});
+
+// Get queued contacts
+app.get('/api/campaigns/:id/queue', (req, res) => {
+  res.json(db.getQueuedContacts(+req.params.id));
+});
+
+// Replenish queue to target count
+app.post('/api/campaigns/:id/replenish', (req, res) => {
+  const target = +req.body.count || 50;
+  const added  = db.replenishQueue(+req.params.id, target);
+  const queued = db.getQueuedContacts(+req.params.id);
+  log(`➕ Replenished: added ${added} contacts (${queued.length} total queued)`);
+  res.json({ ok: true, added, totalQueued: queued.length });
+});
+
+// Clear queue → move queued back to pending
+app.post('/api/campaigns/:id/queue/clear', (req, res) => {
+  const cleared = db.clearQueue(+req.params.id);
+  log(`🗑️ Queue cleared: ${cleared} contacts moved back to pending`);
+  res.json({ ok: true, cleared });
+});
+
+// Skip a contact (do not send in this campaign)
+app.post('/api/contacts/:id/skip', (req, res) => {
+  db.skipContact(+req.params.id);
+  res.json({ ok: true });
+});
+
+// Manual send — send next N queued contacts immediately (bypasses batch schedule)
+app.post('/api/campaigns/:id/send/manual', async (req, res) => {
+  if (state.whatsapp !== 'ready') return res.status(400).json({ error: 'WhatsApp not connected' });
+  if (state.sending)              return res.status(400).json({ error: 'Already sending' });
+
+  const campaign = db.getCampaign(+req.params.id);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+  const count    = Math.min(+req.body.count || 10, 100);
+  const settings = db.getCampaignSettings(+req.params.id);
+  const contacts = db.getQueuedContacts(+req.params.id).slice(0, count);
+
+  if (!contacts.length) return res.status(400).json({ error: 'No queued contacts. Use Pick first.' });
+
+  res.json({ ok: true, sending: contacts.length });
+
+  // Run in background
+  (async () => {
+    const mediaPath  = campaign.media_path || null;
+    const mediaFirst = parseInt(settings.media_first) === 1 || parseInt(campaign.media_first) === 1;
+    let sent = 0; let failed = 0;
+
+    log(`📤 Manual send — ${contacts.length} contacts`);
+
+    for (const contact of contacts) {
+      const message = buildMessage(campaign, contact);
+      const result  = await sendMessage(contact.phone, message, mediaPath, mediaFirst);
+
+      if (result.success) {
+        db.updateContactStatus(contact.id, 'sent');
+        db.recordHistory({ campaign_id: +req.params.id, campaign_contact_id: contact.id,
+          campaign_name: campaign.name, phone: contact.phone, name: contact.name,
+          label: contact.label, status: 'sent' });
+        sent++;
+        log(`  ✅ ${contact.first_name || contact.name} (${contact.phone})`);
+      } else {
+        db.updateContactStatus(contact.id, 'failed', result.error);
+        db.recordHistory({ campaign_id: +req.params.id, campaign_contact_id: contact.id,
+          campaign_name: campaign.name, phone: contact.phone, name: contact.name,
+          label: contact.label, status: 'failed', error: result.error });
+        failed++;
+        log(`  ❌ ${contact.first_name || contact.name}: ${result.error}`, 'error');
+      }
+
+      await sleep(randDelay(settings.delay_min, settings.delay_max));
+    }
+
+    log(`✅ Manual send complete — ${sent} sent, ${failed} failed`);
+    broadcast({ type: 'manual_send_complete', sent, failed });
+  })();
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -613,8 +757,8 @@ app.post('/api/campaigns/:id/send/start', (req, res) => {
   if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
   if (!campaign.message_template) return res.status(400).json({ error: 'Campaign has no message template' });
 
-  const { contacts } = db.getCampaignContacts(+req.params.id, { status: 'pending', limit: 1 });
-  if (!contacts.length) return res.status(400).json({ error: 'No pending contacts in this campaign' });
+  const queuedContacts = db.getQueuedContacts(+req.params.id);
+  if (!queuedContacts.length) return res.status(400).json({ error: 'No queued contacts. Use Pick Contacts first.' });
 
   res.json({ ok: true });
   runCampaign(+req.params.id); // background
@@ -634,6 +778,9 @@ app.post('/api/campaigns/:id/send/pause', (req, res) => {
 app.post('/api/campaigns/:id/send/stop', (req, res) => {
   if (!state.sending || state.sending.campaignId !== +req.params.id) {
     return res.status(400).json({ error: 'This campaign is not currently sending' });
+  }
+  if (state.sending.stopRequested) {
+    return res.json({ ok: true, msg: 'Already stopping' });
   }
   state.sending.stopRequested = true;
   log('🛑 Stop requested');
@@ -690,6 +837,21 @@ server.on('error', (err) => {
   }
 });
 
+// Health check — verify WhatsApp page is still alive every 5 minutes
+setInterval(async () => {
+  if (!waClient || state.whatsapp !== 'ready') return;
+  try {
+    await waClient.pupPage.evaluate(() => document.title);
+  } catch (err) {
+    log('⚠️ WhatsApp health check failed — reconnecting...', 'error');
+    state.whatsapp = 'disconnected';
+    broadcastState();
+    try { await waClient.destroy(); } catch {}
+    waClient = null;
+    setTimeout(initWhatsApp, 3000);
+  }
+}, 5 * 60 * 1000);
+
 function onListening() {
   console.log(`\n✅ WhatsApp Sender v3 running`);
   console.log(`   Dashboard: http://localhost:${PORT}`);
@@ -697,12 +859,7 @@ function onListening() {
 
   db.init();
 
-  // Auto-reconnect if session exists
-  const sessionExists = fs.existsSync(path.join(SESSION_DIR, 'Default'));
-  if (sessionExists) {
-    log('🔄 Existing session found — reconnecting WhatsApp...');
-    setTimeout(initWhatsApp, 2000);
-  }
+  // WhatsApp starts disconnected — user connects manually via dashboard
 }
 
 server.listen(PORT, onListening);

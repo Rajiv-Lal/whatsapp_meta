@@ -102,7 +102,8 @@ CREATE TABLE IF NOT EXISTS campaign_contacts (
 
   -- Send status
   status       TEXT DEFAULT 'pending'
-               CHECK (status IN ('pending','sent','failed','skipped','noweb')),
+               CHECK (status IN ('pending','queued','sent','failed','skipped','noweb')),
+  queued_at    DATETIME,
   sent_at      DATETIME,
   error        TEXT,
 

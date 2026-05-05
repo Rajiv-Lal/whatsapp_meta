@@ -314,17 +314,21 @@ function importContacts(campaignId, rows, sourceFileName, countryCode = '91') {
 /**
  * Get contacts for a campaign with optional filters.
  */
-function getCampaignContacts(campaignId, { status = null, label = null, wa_valid = null, limit = 100, offset = 0 } = {}) {
+function getCampaignContacts(campaignId, { status = null, label = null, wa_valid = null, exclude_sent = false, search = null, limit = 100, offset = 0 } = {}) {
   let query  = 'SELECT * FROM campaign_contacts WHERE campaign_id = ?';
   const args = [campaignId];
 
-  if (status)   { query += ' AND status = ?';   args.push(status); }
-  if (label)    { query += ' AND label = ?';    args.push(label); }
-  if (wa_valid !== null) { query += ' AND wa_valid = ?'; args.push(wa_valid); }
+  if (status)            { query += ' AND status = ?';                        args.push(status); }
+  if (exclude_sent)      { query += " AND status != 'sent'"; }
+  if (label)             { query += ' AND label = ?';                         args.push(label); }
+  if (wa_valid !== null) { query += ' AND wa_valid = ?';                      args.push(wa_valid); }
+  if (search)            { query += ' AND (name LIKE ? OR phone LIKE ? OR first_name LIKE ?)'; args.push('%'+search+'%','%'+search+'%','%'+search+'%'); }
 
-  const total = getDb().prepare(query.replace('SELECT *', 'SELECT COUNT(*) as cnt')).get(...args).cnt;
+  const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as cnt');
+  const total = getDb().prepare(countQuery).get(...args).cnt;
 
-  query += ' ORDER BY id LIMIT ? OFFSET ?';
+  // Queued contacts ordered by send order, everything else by id
+  query += " ORDER BY CASE WHEN status = 'queued' THEN queued_at ELSE NULL END ASC NULLS LAST, id ASC LIMIT ? OFFSET ?";
   args.push(limit, offset);
 
   return { contacts: getDb().prepare(query).all(...args), total };
@@ -393,6 +397,75 @@ function clearContacts(campaignId) {
 }
 
 // ============================================================================
+// QUEUE — PICK / REVIEW WORKFLOW
+// ============================================================================
+
+/**
+ * Pick N pending contacts into the review queue (pending → queued).
+ * Shuffles pending pool so different contacts are picked each time.
+ */
+function pickContactsForReview(campaignId, count) {
+  const pending = getDb().prepare(
+    "SELECT id FROM campaign_contacts WHERE campaign_id = ? AND status = 'pending' ORDER BY RANDOM() LIMIT ?"
+  ).all(campaignId, count);
+
+  if (!pending.length) return 0;
+
+  const stmt = getDb().prepare(
+    "UPDATE campaign_contacts SET status = 'queued', queued_at = CURRENT_TIMESTAMP WHERE id = ?"
+  );
+
+  const pickMany = getDb().transaction((rows) => {
+    for (const row of rows) stmt.run(row.id);
+  });
+
+  pickMany(pending);
+  return pending.length;
+}
+
+/**
+ * Get all queued contacts for a campaign (today's review list).
+ */
+function getQueuedContacts(campaignId) {
+  return getDb().prepare(
+    "SELECT * FROM campaign_contacts WHERE campaign_id = ? AND status = 'queued' ORDER BY queued_at ASC"
+  ).all(campaignId);
+}
+
+/**
+ * Replenish queue to targetCount by picking more from pending.
+ */
+function replenishQueue(campaignId, targetCount) {
+  const currentQueued = getDb().prepare(
+    "SELECT COUNT(*) as cnt FROM campaign_contacts WHERE campaign_id = ? AND status = 'queued'"
+  ).get(campaignId).cnt;
+
+  const needed = targetCount - currentQueued;
+  if (needed <= 0) return 0;
+  return pickContactsForReview(campaignId, needed);
+}
+
+/**
+ * Clear queue — move all queued contacts back to pending.
+ */
+function clearQueue(campaignId) {
+  const result = getDb().prepare(
+    "UPDATE campaign_contacts SET status = 'pending', queued_at = NULL WHERE campaign_id = ? AND status = 'queued'"
+  ).run(campaignId);
+  return result.changes;
+}
+
+/**
+ * Skip a contact — marks as skipped in this campaign.
+ * Record is preserved and can be reused in other campaigns.
+ */
+function skipContact(id) {
+  getDb().prepare(
+    "UPDATE campaign_contacts SET status = 'skipped' WHERE id = ?"
+  ).run(id);
+}
+
+// ============================================================================
 // SEND HISTORY
 // ============================================================================
 
@@ -456,5 +529,12 @@ module.exports = {
 
   // History
   recordHistory,
-  getHistory
+  getHistory,
+
+  // Queue
+  pickContactsForReview,
+  getQueuedContacts,
+  replenishQueue,
+  clearQueue,
+  skipContact
 };
