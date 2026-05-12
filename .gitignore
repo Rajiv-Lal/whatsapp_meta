@@ -10,3 +10,4 @@ uploads/
 .DS_Store
 .env
 session/
+.wwebjs_cache
