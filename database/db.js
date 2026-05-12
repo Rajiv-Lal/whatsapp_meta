@@ -351,7 +351,7 @@ function updateTemplate(id, data) {
 
 function deleteTemplate(id) {
   const inUse = stmt(
-    "SELECT id FROM campaigns WHERE template_id = ? AND status NOT IN ('draft','completed') LIMIT 1"
+    "SELECT id FROM campaigns WHERE template_id = ? AND status NOT IN ('draft','completed','paused') LIMIT 1"
   ).get(id);
   if (inUse) throw new Error('Template is locked to an active campaign. Pause the campaign first.');
   _templateRepo.delete(id);
@@ -359,7 +359,7 @@ function deleteTemplate(id) {
 
 function isTemplateInUse(id) {
   return !!stmt(
-    "SELECT id FROM campaigns WHERE template_id = ? AND status NOT IN ('draft','completed') LIMIT 1"
+    "SELECT id FROM campaigns WHERE template_id = ? AND status NOT IN ('draft','completed','paused') LIMIT 1"
   ).get(id);
 }
 
@@ -397,7 +397,7 @@ function updateContactList(id, data) {
 
 function deleteContactList(id) {
   const inUse = stmt(
-    "SELECT id, name FROM campaigns WHERE contact_list_id = ? AND status NOT IN ('draft','completed') LIMIT 1"
+    "SELECT id, name FROM campaigns WHERE contact_list_id = ? AND status NOT IN ('draft','completed','paused') LIMIT 1"
   ).get(id);
   if (inUse) {
     throw new Error(`Contact list is in use by campaign "${inUse.name}". Pause or complete the campaign first.`);
