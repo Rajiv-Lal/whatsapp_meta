@@ -380,6 +380,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <select id="t-status"><option value="active">Active</option><option value="pending">Pending</option><option value="paused">Paused</option><option value="rejected">Rejected</option></select>
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label>Header Type</label>
+        <select id="t-header-type">
+          <option value="">None / Text only</option>
+          <option value="image">Image</option>
+          <option value="video">Video</option>
+          <option value="document">Document</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Header Media URL</label><input type="text" id="t-header-value" placeholder="Public URL (e.g. Cloudinary). Must match approved header format."/></div>
+    </div>
     <div class="form-group"><label>Body Text * (use {{1}} for first name variable)</label><textarea id="t-body" placeholder="Hello {{1}}, …"></textarea></div>
     <div class="form-group"><label>Footer Text</label><input type="text" id="t-footer" placeholder="Optional footer"/></div>
     <div id="tpl-modal-err" class="alert alert-error" style="display:none"></div>
@@ -1139,6 +1150,8 @@ async function editTemplate(id) {
     document.getElementById('t-category').value = t.category;
     document.getElementById('t-status').value   = t.status;
     document.getElementById('t-body').value     = t.body_text;
+    document.getElementById('t-header-type').value  = t.header_type  || '';
+    document.getElementById('t-header-value').value = t.header_value || '';
     document.getElementById('t-footer').value   = t.footer_text || '';
     document.getElementById('tpl-modal-err').style.display = 'none';
     openModal('modal-template');
@@ -1153,6 +1166,8 @@ async function saveTemplate() {
     category:    document.getElementById('t-category').value,
     status:      document.getElementById('t-status').value,
     body_text:   document.getElementById('t-body').value.trim(),
+    header_type:  document.getElementById('t-header-type').value || null,
+    header_value: document.getElementById('t-header-value').value.trim() || null,
     footer_text: document.getElementById('t-footer').value.trim() || null
   };
   const err = document.getElementById('tpl-modal-err');

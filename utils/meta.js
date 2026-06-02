@@ -1,15 +1,32 @@
 'use strict';
 /**
- * Anugnya WhatsApp Sender — Meta Cloud API Utility v1.3
- * Fix log v1.3:
- *   1. video.id cast to integer — Meta schema requires integer not string
+ * Anugnya WhatsApp Sender — Meta Cloud API Utility v1.4
+ * Fix log v1.4:
+ *   1. Header is now driven by the campaign's TEMPLATE record
+ *      (templates.header_type + templates.header_value), not env.
+ *   2. Media header uses a public URL (link), not a media id —
+ *      no 30-day expiry, no re-upload. header_value holds the URL.
+ *   3. Header type follows the approved template format (image/video/document),
+ *      preventing #132012 format mismatch. text/no-header templates send body only.
  */
 const db = require('../database/db');
 
-const PHONE_NUMBER_ID        = process.env.PHONE_NUMBER_ID;
-const ACCESS_TOKEN           = process.env.ACCESS_TOKEN;
-const TEMPLATE_NAME          = process.env.TEMPLATE_NAME || 'introducing_anugnya_holisitic_care';
-const TEMPLATE_HEADER_MEDIA_ID = process.env.TEMPLATE_HEADER_MEDIA_ID || null;
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const ACCESS_TOKEN    = process.env.ACCESS_TOKEN;
+const TEMPLATE_NAME   = process.env.TEMPLATE_NAME || 'introducing_anugnya_holisitic_care';
+
+// Header formats that carry media via a public URL.
+const MEDIA_HEADER_TYPES = ['image', 'video', 'document'];
+
+// Build the Meta header component from a template's header_type + header_value.
+// Returns null when the template has no media header (text or none).
+function buildHeaderComponent(template) {
+  if (!template) return null;
+  const type = template.header_type;
+  const url  = template.header_value;
+  if (!type || !MEDIA_HEADER_TYPES.includes(type) || !url) return null;
+  return { type: 'header', parameters: [{ type, [type]: { link: url } }] };
+}
 
 async function makeMetaRequest(payload, logData) {
   if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) {
@@ -35,19 +52,34 @@ async function makeMetaRequest(payload, logData) {
 }
 
 async function sendTemplateMessage(phone, firstName, campaignId, contactId) {
-  const components = [];
-  if (TEMPLATE_HEADER_MEDIA_ID) {
-    components.push({
-      type: 'header',
-      parameters: [{ type: 'video', video: { id: TEMPLATE_HEADER_MEDIA_ID } }]
-    });
+  // Resolve the template tied to this campaign. The header (image/video/document)
+  // comes from the template record — templates.header_type + templates.header_value.
+  let template = null;
+  if (campaignId) {
+    const campaign = db.getCampaign(campaignId);
+    if (campaign && campaign.template_id) {
+      template = db.getTemplate(campaign.template_id);
+    }
   }
+
+  const templateName = template?.name     || TEMPLATE_NAME;
+  const languageCode = template?.language || 'en';
+
+  const components = [];
+  const header = buildHeaderComponent(template);
+  if (header) components.push(header);
   components.push({ type: 'body', parameters: [{ type: 'text', text: firstName || 'Friend' }] });
+
   const payload = {
-    messaging_product: 'whatsapp', to: phone, type: 'template',
-    template: { name: TEMPLATE_NAME, language: { code: 'en' }, components }
+    messaging_product: 'whatsapp',
+    to:   phone,
+    type: 'template',
+    template: { name: templateName, language: { code: languageCode }, components }
   };
-  const data = await makeMetaRequest(payload, { type: 'send_template', phone, campaign_id: campaignId || null, contact_id: contactId || null });
+  const data = await makeMetaRequest(payload, {
+    type: 'send_template', phone,
+    campaign_id: campaignId || null, contact_id: contactId || null
+  });
   return data?.messages?.[0]?.id || null;
 }
 
